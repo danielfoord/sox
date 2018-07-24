@@ -242,22 +242,12 @@ namespace Sox.Server
                     catch (SocketException e)
                     {
                         Console.WriteLine(e);
-
-                        if (_connections.TryRemove(connection.Id, out var removed))
-                        {
-                            removed.Dispose();
-                            Console.WriteLine($"CID: {connection.Id} Disconnected | {_connections.Count:N0} connections open");
-                        }
-
+                        RemoveConnection(connection.Id);
                         break;
                     }
                 }
 
-                if (_connections.TryRemove(connection.Id, out var cleanClose))
-                {
-                    await cleanClose.Close(CloseStatusCode.Normal);
-                    Console.WriteLine($"CID: {connection.Id} Disconnected | {_connections.Count:N0} connections open");
-                }
+                RemoveConnection(connection.Id);
 
                 OnDisconnection?.Invoke(this, new OnDisconnectionEventArgs(connection));
 
@@ -269,10 +259,9 @@ namespace Sox.Server
             var connectionIds = _connections.Keys.ToList();
             foreach (var id in connectionIds)
             {
-                if (!_connections.TryRemove(id, out var removed)) return;
-                await removed.Close(CloseStatusCode.GoingAway);
-                OnDisconnection?.Invoke(this, new OnDisconnectionEventArgs(removed));
-                Console.WriteLine($"CID: {id} Disconnected | {_connections.Count:N0} connections open");
+                await _connections[id].Close(CloseStatusCode.GoingAway);
+                OnDisconnection?.Invoke(this, new OnDisconnectionEventArgs(_connections[id]));
+                RemoveConnection(id);
             }
            
             _server.Stop();
@@ -292,6 +281,15 @@ namespace Sox.Server
             {
                 _cancellationTokenSource.Dispose();
                 _cancellationTokenSource = null;
+            }
+        }
+
+        private void RemoveConnection(string id)
+        {
+            if (_connections.TryRemove(id, out var removed))
+            {
+                removed.Dispose();
+                Console.WriteLine($"CID: {id} Disconnected | {_connections.Count:N0} connections open");
             }
         }
     }

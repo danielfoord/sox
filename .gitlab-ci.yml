@@ -1,0 +1,13 @@
+image: microsoft/aspnetcore-build:2.0
+
+build:
+  stage: build
+  script: 
+    - dotnet restore
+    - dotnet buid
+
+test:
+  stage: test
+  script: 
+    - dotnet restore
+    - dotnet test Sox.Core.Tests

@@ -24,7 +24,7 @@ namespace Sox.Server
 
         public const int MaxFramePayloadLen = 4082;
 
-        private static CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private CancellationTokenSource _cancellationTokenSource;
 
         private TcpListener _server;
 
@@ -287,6 +287,8 @@ namespace Sox.Server
         protected virtual void Dispose(bool disposing)
         {
             if (!disposing) return;
+            _cancellationTokenSource.Dispose();
+            _cancellationTokenSource = null;
         }
     }
 }

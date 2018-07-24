@@ -15,7 +15,7 @@ namespace Sox.Server.State
         // Guid used to Id the connection
         public readonly string Id;
         // The state of the connection
-        public ConnectionState State;
+        public volatile ConnectionState State;
         // Last time a pong message was received
         public DateTime LastPongReceived { get; private set; }
         // Is the underlying Socket connected
@@ -29,7 +29,7 @@ namespace Sox.Server.State
         // Size of receive buffer.  
         internal const int BufferSize = 4096;
         // How long to wait between pings to this connection
-        internal const int PingIntervalMs = 10000;
+        internal const int PingIntervalMs = 60000;
         // Receive buffer.  
         internal byte[] Buffer = new byte[BufferSize];
         // Websocket frames.
@@ -68,8 +68,8 @@ namespace Sox.Server.State
         {
             if (State == ConnectionState.Open || State == ConnectionState.Connecting)
             {
-                _pinger.Stop();
                 State = ConnectionState.Closing;
+                _pinger.Stop();
                 var closeFrame = Frame.CreateClose(reason);
                 var closeFrameBytes = closeFrame.Pack();
                 await _stream.WriteAsync(closeFrameBytes, 0, closeFrameBytes.Length);

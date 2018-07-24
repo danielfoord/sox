@@ -99,6 +99,7 @@ namespace Sox.Server
             catch (Exception exception)
             {
                 Console.WriteLine(exception);
+                client.Close();
             }
         }
 
@@ -145,6 +146,7 @@ namespace Sox.Server
 
         private async Task StartClientHandler(Connection connection)
         {
+            // TODO: Clean up this mess
             await Task.Factory.StartNew(async () =>
             {
                 while (connection.State == ConnectionState.Open)
@@ -286,9 +288,11 @@ namespace Sox.Server
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposing) return;
-            _cancellationTokenSource.Dispose();
-            _cancellationTokenSource = null;
+            if (disposing)
+            {
+                _cancellationTokenSource.Dispose();
+                _cancellationTokenSource = null;
+            }
         }
     }
 }

@@ -264,7 +264,6 @@ namespace Sox.Server
 
         public async void Stop()
         {
-            Console.WriteLine("Entered");
             var connectionIds = _connections.Keys.ToList();
             foreach (var id in connectionIds)
             {

@@ -1,0 +1,211 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8" />
+    <meta name="author" content="danielfoord">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css" />
+    <title>Sox Test Client</title>
+
+    <style>
+
+        body {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        pre {
+            color: #cccccc;
+        }
+
+        .connected-indicator {
+            color: #00ff00;
+        }
+
+        .disconnected-indicator {
+            color: #ff4500;
+        }
+    </style>
+
+</head>
+<body>
+
+   
+
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-12">
+
+                <h1>
+                    Sox Test Client - <small id="spnConnected"></small>
+                </h1>
+
+                <div class="input-group mb-3">
+                    <input type="text" id="txtServer" value="ws://localhost:8088" class="form-control"/>
+                    <div class="input-group-append">
+                        <button type="button" id="btnConnect" class="btn btn-outline-success btn-sm">Create Connection</button>
+                        <button type="button" id="btnDisconnect" class="btn btn-outline-danger btn-sm">Disconnect all</button>
+                    </div>
+                </div>
+                <div class="input-group mb-3">
+                    <input type="number" id="txtConnectionAmount" class="form-control" value="100"/>
+                    <div class="input-group-append">
+                        <button type="button" id="btnCreateConnections" class="btn btn-outline-success btn-sm">Create Connections</button>
+                    </div>
+                </div>
+                <div class="input-group mb-3">
+                    <input type="text" id="txtMessage" class="form-control" />
+                    <div class="input-group-append">
+                        <button type="button" id="btnSendMessage" class="btn btn-outline-info btn-sm">Send Message All</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <h3>Connections</h3>
+                <div id="tableContainer"></div>
+            </div>
+            <div class="col-lg-6">
+                <h3>Log</h3>
+                <button type="button" id="btnClearLog" class="btn btn-default btn-sm btn-outline-secondary">Clear</button>
+                <pre id="preLog"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="node_modules/jquery/dist/jquery.js"></script>
+    <script type="text/javascript">
+
+        const txtServer = $('#txtServer');
+        const btnConnect = $('#btnConnect');
+        const btnDisconnect = $('#btnDisconnect');
+        const btnSendMessage = $('#btnSendMessage');
+        const txtMessage = $('#txtMessage');
+        const spnConnected = $('#spnConnected');
+        const btnClearLog = $('#btnClearLog');
+        const preLog = $('#preLog');
+        const tblContainer = $('#tableContainer');
+
+        let sockets = [];
+
+        $('body').on('click', '.btnDisconnect', function () {
+            const index = $(this).attr('data-index');
+            sockets[index].websocket.close();
+        });
+
+        $('#btnCreateConnections').click(() => {
+            const count = $('#txtConnectionAmount').val();
+            for (let i = 0; i < count; i++) {
+                const serverUrl = txtServer.val();
+                const socket = new Socket(serverUrl);
+                sockets.push(socket);
+            }
+        });
+
+        btnConnect.click((e) => {
+            const serverUrl = txtServer.val();
+            const socket = new Socket(serverUrl);
+            sockets.push(socket);
+        });
+
+        btnDisconnect.click(() => {
+            sockets.forEach(socket => {
+                socket.websocket.close();
+            });
+        });
+
+        btnSendMessage.click(() => {
+            sockets.forEach(socket => {
+                socket.websocket.send(txtMessage.val());
+            });
+        });
+
+        btnClearLog.click(() => {
+            preLog.html(null);
+        });
+
+        function debug(msg) {
+            console.debug(msg);
+            preLog.append(`${msg}\n`);
+        }
+
+        function buildTable() {
+
+            if (sockets.length === 0) {
+                tblContainer.html('<h4>No open connection</h4>');
+                spnConnected
+                    .addClass('disconnected-indicator')
+                    .removeClass('connected-indicator')
+                    .html(`${sockets.length} connections open`);
+            } else {
+
+                spnConnected
+                    .addClass('connected-indicator')
+                    .removeClass('disconnected-indicator')
+                    .html(`${sockets.filter(s => s.isConnected).length} connections open`);
+
+                const html = `<table class="table table-sm table-borderless">
+                                    <thead>
+                                        <tr>
+                                            <th style="text-align:left">Status</th>
+                                            <th style="text-align:left">Index</th>
+                                            <th style="text-align:right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tblConnectionsBody">
+                                    </tbody>
+                                </table>`;
+                tblContainer.html(html);
+
+                const body = $('#tblConnectionsBody');
+
+                let bodyhtml = '';
+
+                sockets.forEach((socket, index) => {
+                    bodyhtml += `<tr>
+                                                        <td class="${socket.isConnected ? 'connected-indicator' : 'disconnected-indicator'}">${socket.isConnected ? 'Connected' : 'Disconnected'}</td>
+                                                        <td>${index}</td>
+                                                        <td style="text-align:right" class="btnDisconnect" data-index="${index}"><button class="btn btn-sm btn-danger">Disconnect</button></td>
+                                                     </tr>`;
+                });
+
+                body.html(bodyhtml);
+            }
+        }
+
+        buildTable();
+
+        class Socket {
+
+            constructor(serverUrl) {
+
+                this.serverUrl = serverUrl;
+                this.isConnected = false;
+                this.websocket = new WebSocket(serverUrl);
+
+                debug(`Connecting to ${serverUrl}...`);
+
+                this.websocket.onopen = () => {
+                    this.isConnected = true;
+                    debug(`Connected to ${serverUrl} | ${sockets.filter(s => s.isConnected).length} connected`);
+                    buildTable();
+                };
+
+                this.websocket.onmessage = (evt) => {
+                    debug(`Got message ${evt.data}`);
+                };
+
+                this.websocket.onclose = (evt) => {
+                    this.isConnected = false;
+                    sockets.splice(sockets.indexOf(this), 1);
+                    debug(`Socket connection closed ${evt.code} (clean:${evt.wasClean},reason:${evt.reason}) | ${sockets.length} connected`);
+                    buildTable();
+                };
+            }
+        }
+
+    </script>
+
+</body>
+</html>

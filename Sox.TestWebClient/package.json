@@ -1,0 +1,12 @@
+{
+  "name": "sockd.test-web-client",
+  "version": "0.0.0",
+  "description": "Sockd.TestWebClient",
+  "main": "server.js",
+  "author": {
+    "name": "Daniel"
+  },
+  "dependencies": {
+    "jquery": "^3.3.1"
+  }
+}

@@ -247,9 +247,11 @@ namespace Sox.Server
                     }
                 }
 
-                RemoveConnection(connection.Id);
-
-                OnDisconnection?.Invoke(this, new OnDisconnectionEventArgs(connection));
+                if (connection.CloseStatusCode != CloseStatusCode.GoingAway)
+                {
+                    OnDisconnection?.Invoke(this, new OnDisconnectionEventArgs(connection));
+                    RemoveConnection(connection.Id);
+                }
 
             }, TaskCreationOptions.AttachedToParent);
         }

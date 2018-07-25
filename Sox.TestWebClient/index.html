@@ -31,9 +31,6 @@
 </head>
 <body>
 
-   
-
-
     <div class="container-fluid">
         <div class="row">
             <div class="col-lg-12">
@@ -126,8 +123,7 @@
         });
 
         function debug(msg) {
-            console.debug(msg);
-            preLog.append(`${msg}\n`);
+            preLog.prepend(`${msg}\n`);
         }
 
         function buildTable() {
@@ -164,10 +160,10 @@
 
                 sockets.forEach((socket, index) => {
                     bodyhtml += `<tr>
-                                                        <td class="${socket.isConnected ? 'connected-indicator' : 'disconnected-indicator'}">${socket.isConnected ? 'Connected' : 'Disconnected'}</td>
-                                                        <td>${index}</td>
-                                                        <td style="text-align:right" class="btnDisconnect" data-index="${index}"><button class="btn btn-sm btn-danger">Disconnect</button></td>
-                                                     </tr>`;
+                                 <td class="${socket.isConnected ? 'connected-indicator' : 'disconnected-indicator'}">${socket.isConnected ? 'Connected' : 'Disconnected'}</td>
+                                 <td>${index}</td>
+                                 <td style="text-align:right" class="btnDisconnect" data-index="${index}"><button class="btn btn-sm btn-danger">Disconnect</button></td>
+                                 </tr>`;
                 });
 
                 body.html(bodyhtml);

@@ -16,6 +16,8 @@ namespace Sox.Server.State
         public readonly string Id;
         // The state of the connection
         public volatile ConnectionState State;
+        // The status code used to close the websocket connection
+        public volatile CloseStatusCode CloseStatusCode;
         // Last time a pong message was received
         public DateTime LastPongReceived { get; private set; }
         // Is the underlying Socket connected
@@ -69,6 +71,7 @@ namespace Sox.Server.State
             if (State == ConnectionState.Open || State == ConnectionState.Connecting)
             {
                 State = ConnectionState.Closing;
+                CloseStatusCode = reason;
                 _pinger.Stop();
                 var closeFrame = Frame.CreateClose(reason);
                 var closeFrameBytes = closeFrame.Pack();

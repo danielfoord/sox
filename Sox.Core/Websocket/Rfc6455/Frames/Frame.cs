@@ -65,20 +65,6 @@ namespace Sox.Core.Websocket.Rfc6455.Frames
         /// </summary>
         public readonly bool Rsv3;
 
-        public Frame(bool isFinal, bool rsv1, bool rsv2, bool rsv3,
-            OpCode opCode, bool shouldMask, uint payloadLength, byte[] maskingKey, byte[] data)
-        {
-            IsFinal = isFinal;
-            Rsv1 = rsv1;
-            Rsv2 = rsv2;
-            Rsv3 = rsv3;
-            OpCode = opCode;
-            ShouldMask = shouldMask;
-            PayloadLength = payloadLength;
-            MaskingKey = maskingKey;
-            Data = data;
-        }
-
         /// <summary>
         ///     Is this the Final frame. Defaulted to true unless modified by WithIsFinal
         /// </summary>
@@ -94,6 +80,20 @@ namespace Sox.Core.Websocket.Rfc6455.Frames
         /// </summary>
         /// <returns>The decoded payload</returns>
         public string DataAsString() => Data.GetString();
+
+        public Frame(bool isFinal, bool rsv1, bool rsv2, bool rsv3,
+            OpCode opCode, bool shouldMask, uint payloadLength, byte[] maskingKey, byte[] data)
+        {
+            IsFinal = isFinal;
+            Rsv1 = rsv1;
+            Rsv2 = rsv2;
+            Rsv3 = rsv3;
+            OpCode = opCode;
+            ShouldMask = shouldMask;
+            PayloadLength = payloadLength;
+            MaskingKey = maskingKey;
+            Data = data;
+        }
 
         /// <summary>
         ///     Create a text frame
@@ -298,23 +298,13 @@ namespace Sox.Core.Websocket.Rfc6455.Frames
                 if (payloadLength == 126)
                 {
                     var lenBytes = ReadBytes(ms, 2, 2);
-
-                    if (BitConverter.IsLittleEndian)
-                    {
-                        Array.Reverse(lenBytes);
-                    }
-
+                    EnsureBigEndian(lenBytes);
                     payloadLength = BitConverter.ToUInt16(lenBytes, 0);
                 }
                 else if (payloadLength == 127)
                 {
                     var lenBytes = ReadBytes(ms, 8, 8);
-
-                    if (BitConverter.IsLittleEndian)
-                    {
-                        Array.Reverse(lenBytes);
-                    }
-                
+                    EnsureBigEndian(lenBytes);
                     payloadLength = BitConverter.ToUInt32(lenBytes, 0);
                 }
 
@@ -355,13 +345,6 @@ namespace Sox.Core.Websocket.Rfc6455.Frames
             }
         }
 
-        private static byte[] ReadBytes(Stream ms, int bufferSize, int count)
-        {
-            var buffer = new byte[bufferSize];
-            ms.Read(buffer, 0, count);
-            return buffer;
-        }
-
         /// <summary>
         ///     Encode this frame as a byte array
         /// </summary>
@@ -389,70 +372,72 @@ namespace Sox.Core.Websocket.Rfc6455.Frames
 
             headers[0] = (byte) (finalMask | rsv1Mask | rsv2Mask | rsv3Mask | opCode);
 
-            using (var buffer = new MemoryStream {Position = 0})
+            using (var ms = new MemoryStream {Position = 0})
             {
                 // Pack the shouldMask and payload length (1bit+7bit | 1bit+7bit+16bit | 1bit+7bit+64bit)
                 if (PayloadLength < 126)
                 {
                     headers[1] = (byte) (mask | (ushort) PayloadLength);
-                    buffer.Write(headers, 0, headers.Length);
+                    ms.Write(headers, 0, headers.Length);
                 }
                 else if (PayloadLength >= 126 && PayloadLength <= ushort.MaxValue)
                 {
                     headers[1] = (byte) (mask | 126);
                     var length = (ushort) PayloadLength;
                     var lengthBytes = BitConverter.GetBytes(length);
-                    if (BitConverter.IsLittleEndian)
-                    {
-                        Array.Reverse(lengthBytes);
-                    }
+                    EnsureBigEndian(lengthBytes);
                     Array.Copy(lengthBytes, 0, headers, 2, 2);
-                    buffer.Write(headers, 0, headers.Length);
+                    ms.Write(headers, 0, headers.Length);
                 }
                 else if (PayloadLength > ushort.MaxValue)
                 {
                     headers[1] = (byte) (mask | 127);
                     var length = (ulong) PayloadLength;
                     var lengthBytes = BitConverter.GetBytes(length);
-                    if (BitConverter.IsLittleEndian)
-                    {
-                        Array.Reverse(lengthBytes);
-                    }
+                    EnsureBigEndian(lengthBytes);
                     Array.Copy(lengthBytes, 0, headers, 2, 8);
-                    buffer.Write(headers, 0, headers.Length);
+                    ms.Write(headers, 0, headers.Length);
                 }
 
                 if (ShouldMask)
                 {
-                    buffer.Write(MaskingKey, 0, 4);
+                    ms.Write(MaskingKey, 0, 4);
 
                     // Mask the payload data with a simple XOR using the masking key
                     var masked = Xor(MaskingKey, Data);
-                    buffer.Write(masked, 0, masked.Length);
+                    ms.Write(masked, 0, masked.Length);
                 }
                 else
                 {   
                     // If this is a close frame status code, it needs to be BigEndian
                     if (OpCode == OpCode.Close)
                     {
-                        if (BitConverter.IsLittleEndian)
-                        {
-                            Array.Reverse(Data);
-                        }
+                        EnsureBigEndian(Data);
                     }
-                    buffer.Write(Data, 0, Data.Length);
+                    ms.Write(Data, 0, Data.Length);
                 }
 
-                buffer.Flush();
+                ms.Flush();
 
-                return buffer.ToArray();
+                return ms.ToArray();
             }
+        }
+
+        private static byte[] ReadBytes(Stream ms, int bufferSize, int count)
+        {
+            var buffer = new byte[bufferSize];
+            ms.Read(buffer, 0, count);
+            return buffer;
         }
 
         private static byte[] Xor(IReadOnlyList<byte> maskingKey, IReadOnlyList<byte> data)
         {
             var output = new byte[data.Count];
-            for (var i = 0; i < data.Count; i++) output[i] = (byte) (data[i] ^ maskingKey[i % 4]);
+            for (var i = 0; i < data.Count; i++)
+            {
+                output[i] = (byte) (data[i] ^ maskingKey[i % 4]);
+            }
+
             return output;
         }
 
@@ -461,9 +446,20 @@ namespace Sox.Core.Websocket.Rfc6455.Frames
             var random = new Random();
             var maskingKey = new byte[4];
 
-            for (var i = 0; i < 4; i++) maskingKey[i] = (byte) random.Next(255);
+            for (var i = 0; i < 4; i++)
+            {
+                maskingKey[i] = (byte) random.Next(255);
+            }
 
             return maskingKey;
+        }
+
+        private static void EnsureBigEndian(byte[] bytes)
+        {
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(bytes);
+            }
         }
 
         public override string ToString()

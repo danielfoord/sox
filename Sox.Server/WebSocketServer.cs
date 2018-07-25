@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Sox.Core.Extensions;
@@ -53,7 +52,9 @@ namespace Sox.Server
             {
                 try
                 {
+#if DEBUG
                     Console.Write("#Waiting for a connection... ");
+#endif
                     var client = await _server.AcceptTcpClientAsync();
                     await HandleHttpUpgrade(client);
                 }
@@ -81,7 +82,9 @@ namespace Sox.Server
                     {
                         if (httpRequest.Headers.IsWebSocketUpgrade)
                         {
+#if DEBUG
                             Console.WriteLine($"Received WS Upgrade request from : {httpRequest.Headers.Origin}");
+#endif
                             await ProcessHandshake(client, httpRequest);
                         }
                         else
@@ -91,7 +94,9 @@ namespace Sox.Server
                     }
                     else
                     {
+#if DEBUG
                         Console.WriteLine("Invalid HTTP request. Closing connection");
+#endif
                         client.Close();
                     }
                 }
@@ -124,13 +129,11 @@ namespace Sox.Server
                     }
                 };
 
-                var responseBytes = Encoding.UTF8.GetBytes(response.ToString());
-
                 // Retrieve the socket from the state object.  
                 var connection = new Connection(client);
 
                 // Begin sending the data to the remote device.  
-                await connection.Send(responseBytes);
+                await connection.Send(response);
 
                 connection.State = ConnectionState.Open;
 
@@ -138,15 +141,15 @@ namespace Sox.Server
 
                 OnConnection?.Invoke(this, new OnConnectionEventArgs(connection));
 
+#if DEBUG
                 Console.WriteLine($"CID: {connection.Id} Connected | {_connections.Count:N0} connections open");
-
+#endif
                 await StartClientHandler(connection);
             }
         }
 
         private async Task StartClientHandler(Connection connection)
         {
-            // TODO: Clean up this mess
             await Task.Factory.StartNew(async () =>
             {
                 while (connection.State == ConnectionState.Open)
@@ -159,11 +162,14 @@ namespace Sox.Server
                         {
                             if (Frame.TryUnpack(connection.Buffer, out var frame))
                             {
+#if DEBUG
                                 Console.WriteLine($"CID: {connection.Id} | Received WS Frame ({frame.OpCode.ToString()}) | : {frame.PayloadLength:N0} bytes | {bytesRead:N0} bytes read");
-
+#endif
                                 if (frame.PayloadLength > MaxFramePayloadLen)
                                 {
+#if DEBUG
                                     Console.WriteLine($"CID: {connection.Id} | Frame payload lenth {frame.PayloadLength:N0} exceeds {MaxFramePayloadLen:N0}. Disconnecting client");
+#endif
                                     await connection.Close(CloseStatusCode.MessageTooBig);
                                 }
 
@@ -174,59 +180,23 @@ namespace Sox.Server
                                     switch (frame.OpCode)
                                     {
                                         case OpCode.Continuation:
-                                            connection.Frames.Add(frame);
-                                            if (connection.HasFinalFrame)
-                                            {
-                                                var message = Message.Unpack(connection.Frames);
-                                                connection.Frames.Clear();
-
-                                                switch (message.Type)
-                                                {
-                                                    case MessageType.Binary:
-                                                        OnBinaryMessage?.Invoke(this, new OnBinaryMessageEventArgs(connection, message.Data));
-                                                        break;
-                                                    case MessageType.Text:
-                                                        OnTextMessage?.Invoke(this, new OnTextMessageEventArgs(connection, message.Data.GetString()));
-                                                        break;
-                                                    default:
-                                                        await connection.Close(CloseStatusCode.ProtocolError);
-                                                        break;
-                                                }
-                                            }
+                                            await OnContinuationFrame(frame, connection);
                                             break;
-
                                         case OpCode.Text:
-                                            connection.Frames.Add(frame);
-                                            if (connection.HasFinalFrame)
-                                            {
-                                                var message = Message.Unpack(connection.Frames);
-                                                connection.Frames.Clear();
-                                                OnTextMessage?.Invoke(this, new OnTextMessageEventArgs(connection, message.Data.GetString()));
-                                            }
+                                            await OnTextFrame(frame, connection);
                                             break;
-
                                         case OpCode.Binary:
-                                            connection.Frames.Add(frame);
-                                            if (connection.HasFinalFrame)
-                                            {
-                                                var message = Message.Unpack(connection.Frames);
-                                                connection.Frames.Clear();
-                                                OnBinaryMessage?.Invoke(this, new OnBinaryMessageEventArgs(connection, message.Data));
-                                            }
+                                            await OnBinaryFrame(frame, connection);
                                             break;
-
                                         case OpCode.Close:
-                                            await connection.Close(CloseStatusCode.Normal);
+                                            await OnCloseFrame(connection);
                                             break;
-
                                         case OpCode.Ping:
-                                            await connection.Pong();
+                                            await OnPingFrame(connection);
                                             break;
-
                                         case OpCode.Pong:
-                                            connection.UpdateLastPong();
+                                            await OnPongFrame(connection);
                                             break;
-
                                         default:
                                             await connection.Close(CloseStatusCode.ProtocolError);
                                             break;
@@ -254,6 +224,75 @@ namespace Sox.Server
                 }
 
             }, TaskCreationOptions.AttachedToParent);
+        }
+
+        private async Task OnContinuationFrame(Frame frame, Connection connection)
+        {
+            connection.Frames.Add(frame);
+            if (connection.HasFinalFrame)
+            {
+                var message = Message.Unpack(connection.Frames);
+                connection.Frames.Clear();
+
+                switch (message.Type)
+                {
+                    case MessageType.Binary:
+                        OnBinaryMessage?.Invoke(this, new OnBinaryMessageEventArgs(connection, message.Data));
+                        break;
+                    case MessageType.Text:
+                        OnTextMessage?.Invoke(this, new OnTextMessageEventArgs(connection, message.Data.GetString()));
+                        break;
+                    default:
+                        await connection.Close(CloseStatusCode.ProtocolError);
+                        break;
+                }
+            }
+        }
+
+        private async Task OnTextFrame(Frame frame, Connection connection)
+        {
+            await Task.Run(() =>
+            {
+                connection.Frames.Add(frame);
+                if (connection.HasFinalFrame)
+                {
+                    var message = Message.Unpack(connection.Frames);
+                    connection.Frames.Clear();
+                    OnTextMessage?.Invoke(this, new OnTextMessageEventArgs(connection, message.Data.GetString()));
+                }
+            });
+        }
+
+        private async Task OnBinaryFrame(Frame frame, Connection connection)
+        {
+            await Task.Run(() =>
+            {
+                connection.Frames.Add(frame);
+                if (connection.HasFinalFrame)
+                {
+                    var message = Message.Unpack(connection.Frames);
+                    connection.Frames.Clear();
+                    OnBinaryMessage?.Invoke(this, new OnBinaryMessageEventArgs(connection, message.Data));
+                }
+            });
+        }
+
+        private static async Task OnCloseFrame(Connection connection)
+        {
+            await connection.Close(CloseStatusCode.Normal);
+        }
+
+        private static async Task OnPingFrame(Connection connection)
+        {
+            await connection.Pong();
+        }
+
+        private static async Task OnPongFrame(Connection connection)
+        {
+            await Task.Run(() =>
+            {
+                connection.UpdateLastPong();
+            });
         }
 
         public async void Stop()
@@ -291,7 +330,9 @@ namespace Sox.Server
             if (_connections.TryRemove(id, out var removed))
             {
                 removed.Dispose();
+#if DEBUG
                 Console.WriteLine($"CID: {id} Disconnected | {_connections.Count:N0} connections open");
+#endif
             }
         }
     }

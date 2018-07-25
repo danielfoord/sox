@@ -42,31 +42,26 @@
                 <div class="input-group mb-3">
                     <input type="text" id="txtServer" value="ws://localhost:8088" class="form-control"/>
                     <div class="input-group-append">
-                        <button type="button" id="btnConnect" class="btn btn-outline-success btn-sm">Create Connection</button>
-                        <button type="button" id="btnDisconnect" class="btn btn-outline-danger btn-sm">Disconnect all</button>
+                        <button type="button" id="btnConnect" class="btn btn-success btn-sm">Create Connection</button>
+                        <button type="button" id="btnDisconnect" class="btn btn-danger btn-sm">Disconnect all</button>
                     </div>
                 </div>
                 <div class="input-group mb-3">
                     <input type="number" id="txtConnectionAmount" class="form-control" value="100"/>
                     <div class="input-group-append">
-                        <button type="button" id="btnCreateConnections" class="btn btn-outline-success btn-sm">Create Connections</button>
+                        <button type="button" id="btnCreateConnections" class="btn btn-success btn-sm">Create Connections</button>
                     </div>
                 </div>
                 <div class="input-group mb-3">
                     <input type="text" id="txtMessage" class="form-control" />
                     <div class="input-group-append">
-                        <button type="button" id="btnSendMessage" class="btn btn-outline-info btn-sm">Send Message All</button>
+                        <button type="button" id="btnSendMessage" class="btn btn-info btn-sm">Send Message All</button>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
+            <div class="col-lg-12">
                 <h3>Connections</h3>
                 <div id="tableContainer"></div>
-            </div>
-            <div class="col-lg-6">
-                <h3>Log</h3>
-                <button type="button" id="btnClearLog" class="btn btn-default btn-sm btn-outline-secondary">Clear</button>
-                <pre id="preLog"></pre>
             </div>
         </div>
     </div>
@@ -80,8 +75,6 @@
         const btnSendMessage = $('#btnSendMessage');
         const txtMessage = $('#txtMessage');
         const spnConnected = $('#spnConnected');
-        const btnClearLog = $('#btnClearLog');
-        const preLog = $('#preLog');
         const tblContainer = $('#tableContainer');
 
         let sockets = [];
@@ -118,12 +111,8 @@
             });
         });
 
-        btnClearLog.click(() => {
-            preLog.html(null);
-        });
-
         function debug(msg) {
-            preLog.prepend(`${msg}\n`);
+            console.debug(msg);
         }
 
         function buildTable() {

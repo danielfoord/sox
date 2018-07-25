@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
+using Sox.Core.Http;
 using Sox.Core.Websocket.Rfc6455;
 using Sox.Core.Websocket.Rfc6455.Frames;
 using Sox.Core.Websocket.Rfc6455.Messaging;
@@ -106,6 +108,13 @@ namespace Sox.Server.State
                 await _stream.WriteAsync(frame, 0, frame.Length);
                 await _stream.FlushAsync();
             }
+        }
+
+        public async Task Send(HttpResponse res)
+        {
+            var responseBytes = Encoding.UTF8.GetBytes(res.ToString());
+            await _stream.WriteAsync(responseBytes, 0, responseBytes.Length);
+            await _stream.FlushAsync();
         }
 
         public async Task Pong()

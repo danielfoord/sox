@@ -15,8 +15,6 @@ namespace Sox.Core.Http
 
         public HttpHeaders Headers { get; set; }
 
-        public string Raw { get; private set; }
-
         public HttpRequest()
         {
             Headers = new HttpHeaders();
@@ -57,7 +55,6 @@ namespace Sox.Core.Http
                     Method = new HttpMethod(method),
                     Path = path,
                     Version = version,
-                    Raw = request
                 };
 
                 var headers = lines.Skip(1);
@@ -77,11 +74,6 @@ namespace Sox.Core.Http
             {
                 throw new HttpRequestParseException("Failed to parse HTTP request", ex);
             }
-        }
-
-        public override string ToString()
-        {
-            return this.Raw;
         }
     }
 }

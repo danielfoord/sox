@@ -1,56 +1,59 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
-using PingTimer = System.Timers.Timer;
 using Sox.Core.Http;
 using Sox.Core.Websocket.Rfc6455;
-using Sox.Core.Websocket.Rfc6455.Framing;
+using Sox.Core.Websocket.Rfc6455.Frames;
 using Sox.Core.Websocket.Rfc6455.Messaging;
-using Sox.Core.Extensions;
 
 namespace Sox.Server.State
 {
-    // FIXME: Comments
-    public sealed class Connection : IDisposable
+    public class Connection : IDisposable
     {
         // Guid used to Id the connection
         public readonly string Id;
-
         // The state of the connection
         public volatile ConnectionState State;
-
-        public DateTime PongRecieved { get; private set; }
-
+        // The status code used to close the websocket connection
+        public volatile CloseStatusCode CloseStatusCode;
+        // Last time a pong message was received
+        public DateTime LastPongReceived { get; private set; }
+        // Is the underlying Socket connected
+        public bool IsConnected => _tcpClient.Connected;
+        // Client socket.  
+        private TcpClient _tcpClient;
         // TcpClient underlying stream
-        private readonly Stream _stream;
-
+        private readonly NetworkStream _stream;
+        // The socket address
+        public string Address => _tcpClient.Client.RemoteEndPoint.ToString();
         // Size of receive buffer.  
-        internal const int MaxFramePayloadSize = 4096;
-
+        internal const int BufferSize = 4096;
         // How long to wait between pings to this connection
         internal const int PingIntervalMs = 60000;
-
+        // Receive buffer.  
+        internal byte[] Buffer = new byte[BufferSize];
         // Websocket frames.
         internal List<Frame> Frames = new List<Frame>();
-
+        // The current message size in bytes
+        internal ulong CurrentMessageSize => Convert.ToUInt64(Frames.Sum(frame => frame.PayloadLength));
+        // Does the connection have the final frame of the message
+        internal bool HasFinalFrame;
         // Scheduled pinger
-        private PingTimer _pinger;
+        private Timer _pinger;
 
-        // FIXME: Comments
-        public Connection(Stream stream)
+        public Connection(TcpClient tcpClient)
         {
             Id = Guid.NewGuid().ToString();
             State = ConnectionState.Connecting;
-            _stream = stream;
-            _stream.WriteTimeout = 2000;
-            _pinger = new PingTimer
+            LastPongReceived = DateTime.Now;
+            _tcpClient = tcpClient;
+            _stream = _tcpClient.GetStream();
+
+            _pinger = new Timer
             {
                 Enabled = true,
                 Interval = PingIntervalMs,
@@ -60,94 +63,88 @@ namespace Sox.Server.State
             _pinger.Elapsed += Ping;
         }
 
-        ~Connection()
+        public void UpdateLastPong()
         {
-            Dispose(false);
+            LastPongReceived = DateTime.Now;
         }
 
-        // FIXME: Comments
-        public async Task<Frame> ReadFrameAsync()
-        {
-            return await Frame.UnpackAsync(_stream);
-        }
-
-        // FIXME: Comments
-        public void UpdateLastPong(DateTime dateTime)
-        {
-            PongRecieved = dateTime;
-        }
-
-        // FIXME: Comments
         public async Task Close(CloseStatusCode reason)
         {
             if (State == ConnectionState.Open || State == ConnectionState.Connecting)
             {
                 State = ConnectionState.Closing;
+                CloseStatusCode = reason;
                 _pinger.Stop();
-                await _stream.WriteAndFlushAsync(
-                    await Frame.CreateClose(reason).PackAsync());
+                var closeFrame = Frame.CreateClose(reason);
+                var closeFrameBytes = closeFrame.Pack();
+                await _stream.WriteAsync(closeFrameBytes, 0, closeFrameBytes.Length);
+                _tcpClient?.Close();
                 State = ConnectionState.Closed;
             }
         }
 
-        // FIXME: Comments
+        public async Task<int> Receive(byte[] buffer)
+        {
+            return await _stream.ReadAsync(buffer, 0, buffer.Length);
+        }
+
         public async Task Send(string data)
         {
-            (await new Message(data).Pack(MaxFramePayloadSize))
-                .ForEach(async (frame) =>
-                    await _stream.WriteAndFlushAsync(frame));
+            var message = new Message(data);
+            var frames = message.Pack(WebSocketServer.MaxFramePayloadLen).Select(frame => frame.Pack());
+            foreach (var frame in frames)
+            {
+                await _stream.WriteAsync(frame, 0, frame.Length);
+                await _stream.FlushAsync();
+            }
         }
 
-        // FIXME: Comments
         public async Task Send(byte[] data)
         {
-            (await new Message(data).Pack(MaxFramePayloadSize))
-                .ForEach(async (frame) =>
-                    await _stream.WriteAndFlushAsync(frame));
+            var message = new Message(data);
+            var frames = message.Pack(WebSocketServer.MaxFramePayloadLen).Select(frame => frame.Pack());
+            foreach (var frame in frames)
+            {
+                await _stream.WriteAsync(frame, 0, frame.Length);
+                await _stream.FlushAsync();
+            }
         }
 
-        // FIXME: Comments
         public async Task Send(HttpResponse res)
         {
-            await _stream.WriteAndFlushAsync(Encoding.UTF8.GetBytes(res.ToString()));
+            var responseBytes = Encoding.UTF8.GetBytes(res.ToString());
+            await _stream.WriteAsync(responseBytes, 0, responseBytes.Length);
+            await _stream.FlushAsync();
         }
 
-        // FIXME: Comments
         public async Task Pong()
         {
-            await _stream.WriteAndFlushAsync(await Frame.CreatePong().PackAsync());
+            var frame = Frame.CreatePong().Pack();
+            await _stream.WriteAsync(frame, 0, frame.Length);
+            await _stream.FlushAsync();
         }
 
-        // FIXME: Comments
-        public async void Ping(object sender, ElapsedEventArgs elapsedEventArgs)
+        public void Ping(object sender, ElapsedEventArgs elapsedEventArgs)
         {
-            await _stream.WriteAndFlushAsync(await Frame.CreatePing().PackAsync());
+            var frame = Frame.CreatePing().Pack();
+            _tcpClient.Client.Send(frame);
         }
 
-        // FIXME: Comments
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        private void Dispose(bool disposing)
+        protected virtual void Dispose(bool disposing)
         {
             if (disposing)
             {
-                _stream?.Dispose();
+                _tcpClient?.Dispose();
+                _tcpClient = null;
                 _pinger?.Dispose();
+                _pinger = null;
             }
-        }
-
-        /// <summary>
-        ///     This is called when the final message frame has been received
-        /// </summary>
-        internal async Task<Message> UnpackMessage()
-        {
-            var message = await Message.Unpack(Frames);
-            Frames.Clear();
-            return message;
         }
     }
 }

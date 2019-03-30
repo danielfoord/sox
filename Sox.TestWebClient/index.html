@@ -1,18 +1,15 @@
 ﻿<!doctype html>
 <html lang="en">
-
 <head>
 
     <meta charset="UTF-8" />
-    <meta name="author"
-        content="danielfoord">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet"
-        href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css" />
+    <meta name="author" content="danielfoord">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.2/css/bootstrap.min.css" />
     <title>Sox Test Client</title>
 
     <style>
+
         body {
             background: #000000;
             color: #ffffff;
@@ -32,7 +29,6 @@
     </style>
 
 </head>
-
 <body>
 
     <div class="container-fluid">
@@ -40,56 +36,37 @@
             <div class="col-lg-12">
 
                 <h1>
-                    Sox Test Client -
-                    <small id="spnConnected"></small>
+                    Sox Test Client - <small id="spnConnected"></small>
                 </h1>
 
                 <div class="input-group mb-3">
-                    <input type="text"
-                        id="txtServer"
-                        value="wss://localhost:44315"
-                        class="form-control" />
+                    <input type="text" id="txtServer" value="ws://localhost:8088" class="form-control"/>
                     <div class="input-group-append">
-                        <button type="button"
-                            id="btnConnect"
-                            class="btn btn-success btn-sm">Create Connection</button>
-                        <button type="button"
-                            id="btnDisconnect"
-                            class="btn btn-danger btn-sm">Disconnect all</button>
+                        <button type="button" id="btnConnect" class="btn btn-success btn-sm">Create Connection</button>
+                        <button type="button" id="btnDisconnect" class="btn btn-danger btn-sm">Disconnect all</button>
                     </div>
                 </div>
                 <div class="input-group mb-3">
-                    <input type="number"
-                        id="txtConnectionAmount"
-                        class="form-control"
-                        value="100" />
+                    <input type="number" id="txtConnectionAmount" class="form-control" value="100"/>
                     <div class="input-group-append">
-                        <button type="button"
-                            id="btnCreateConnections"
-                            class="btn btn-success btn-sm">Create Connections</button>
+                        <button type="button" id="btnCreateConnections" class="btn btn-success btn-sm">Create Connections</button>
                     </div>
                 </div>
                 <div class="input-group mb-3">
-                    <input type="text"
-                        id="txtMessage"
-                        class="form-control" />
+                    <input type="text" id="txtMessage" class="form-control" />
                     <div class="input-group-append">
-                        <button type="button"
-                            id="btnSendMessage"
-                            class="btn btn-info btn-sm">Send Message All</button>
+                        <button type="button" id="btnSendMessage" class="btn btn-info btn-sm">Send Message All</button>
                     </div>
                 </div>
             </div>
+            <div class="col-lg-12">
+                <h3>Connections</h3>
+                <div id="tableContainer"></div>
+            </div>
         </div>
-        <div class="col-lg-12">
-            <h3>Connections</h3>
-            <div id="tableContainer"></div>
-        </div>
-    </div>
     </div>
 
-    <script type="text/javascript"
-        src="node_modules/jquery/dist/jquery.js"></script>
+    <script type="text/javascript" src="node_modules/jquery/dist/jquery.js"></script>
     <script type="text/javascript">
 
         const txtServer = $('#txtServer');
@@ -136,11 +113,6 @@
 
         function debug(msg) {
             console.debug(msg);
-        }
-
-
-        function warn(msg) {
-            console.warn(msg);
         }
 
         function buildTable() {
@@ -212,7 +184,7 @@
                 this.websocket.onclose = (evt) => {
                     this.isConnected = false;
                     sockets.splice(sockets.indexOf(this), 1);
-                    warn(`Socket connection closed ${evt.code} (clean:${evt.wasClean},reason:${evt.reason}) | ${sockets.length} connected`);
+                    debug(`Socket connection closed ${evt.code} (clean:${evt.wasClean},reason:${evt.reason}) | ${sockets.length} connected`);
                     buildTable();
                 };
             }
@@ -221,5 +193,4 @@
     </script>
 
 </body>
-
 </html>

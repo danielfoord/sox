@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,22 +7,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sox.Server\Sox.Server.csproj" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-    <None Update="sox.pfx" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="publish\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Remove="publish\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="publish\**" />
   </ItemGroup>
 
 </Project>

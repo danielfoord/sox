@@ -259,11 +259,3 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
-
-# VSCode config
-.vscode
-
-# Code coverage reports
-coverage
-coverage.json
-coverage.opencover.xml

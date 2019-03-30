@@ -11,12 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sox.Server", "Sox.Server\So
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sox.EchoServer", "Sox.EchoServer\Sox.EchoServer.csproj", "{796D7745-BC63-4756-BCA6-D11D3A9F845B}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{06ED0324-C795-4741-899E-A9B496E9C207}"
-ProjectSection(SolutionItems) = preProject
-	run-echo-server.sh = run-echo-server.sh
-	test.sh = test.sh
-EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

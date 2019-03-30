@@ -1,5 +1,3 @@
-using System;
-
 namespace Sox.Core.Http
 {
     public class HttpStatusCode
@@ -53,12 +51,75 @@ namespace Sox.Core.Http
         public static readonly HttpStatusCode UseProxy = new HttpStatusCode(305, "Use Proxy");
 
         public readonly string ReasonPhrase;
-        public readonly int Code;
+        public readonly int StatusCode;
 
-        public HttpStatusCode(int code, string reasonPhrase)
+        public HttpStatusCode(int statusCode, string reasonPhrase)
         {
-            Code = code;
+            StatusCode = statusCode;
             ReasonPhrase = reasonPhrase;
+        }
+
+        public bool TryParse(int code, string reason, out HttpStatusCode statusCode)
+        {
+            var r = reason.ToLower();
+            switch(code) 
+            {
+                case 202: statusCode = Accepted; return true;
+                case 300: statusCode = Ambiguous; return true;
+                case 502: statusCode = BadGateway; return true;
+                case 400: statusCode = BadRequest; return true;
+                case 409: statusCode = Conflict; return true;
+                case 100: statusCode = Continue; return true;
+                case 201: statusCode = Created; return true;
+                case 417: statusCode = ExpectationFailed; return true;
+                case 403: statusCode = Forbidden; return true;
+                case 302:
+                    if (r == Found.ReasonPhrase.ToLower()) { statusCode = Found; return true; }
+                    else if (r == Redirect.ReasonPhrase.ToLower()) { statusCode = Redirect; return true; }
+                    statusCode = null;
+                    return false;
+                case 504: statusCode = GatewayTimeout; return true;
+                case 410: statusCode = Gone; return true;
+                case 505: statusCode = HttpVersionNotSupported; return true;
+                case 500: statusCode = InternalServerError; return true;
+                case 411: statusCode = LengthRequired; return true;
+                case 405: statusCode = MethodNotAllowed; return true;
+                case 301: statusCode = Moved; return true;
+                case 204: statusCode = NoContent; return true;
+                case 203: statusCode = NonAuthoritativeInformation; return true;
+                case 406: statusCode = NotAcceptable; return true;
+                case 404: statusCode = NotFound; return true;
+                case 501: statusCode = NotImplemented; return true;
+                case 304: statusCode = NotModified; return true;
+                case 200: statusCode = Ok; return true;
+                case 206: statusCode = PartialContent; return true;
+                case 402: statusCode = PaymentRequired; return true;
+                case 412: statusCode = PreconditionFailed; return true;
+                case 407: statusCode = ProxyAuthenticationRequired; return true;
+                case 303:
+                    if (r == RedirectMethod.ReasonPhrase.ToLower()) { statusCode = RedirectMethod; return true; }
+                    else if (r == SeeOther.ReasonPhrase.ToLower()) { statusCode = SeeOther; return true; }
+                    statusCode = null;
+                    return false;
+                case 307:
+                    if (r == TemporaryRedirect.ReasonPhrase.ToLower()) { statusCode = TemporaryRedirect; return true; }
+                    else if (r == RedirectKeepVerb.ReasonPhrase.ToLower()) { statusCode = RedirectKeepVerb; return true; }
+                    statusCode = null;
+                    return false;
+                case 416: statusCode = RequestedRangeNotSatisfiable; return true;
+                case 413: statusCode = RequestEntityTooLarge; return true;
+                case 408: statusCode = RequestTimeout; return true;
+                case 414: statusCode = RequestUriTooLong; return true;
+                case 205: statusCode = ResetContent; return true;
+                case 503: statusCode = ServiceUnavailable; return true;
+                case 101: statusCode = SwitchingProtocols; return true;
+                case 401: statusCode = Unauthorized; return true;
+                case 415: statusCode = UnsupportedMediaType; return true;
+                case 306: statusCode = Unused; return true;
+                case 426: statusCode = UpgradeRequired; return true;
+                case 305: statusCode = UseProxy; return true;
+                default: statusCode = null; return false;
+            }
         }
     }
 }

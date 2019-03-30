@@ -19,7 +19,7 @@ namespace Sox.Core.Http
 
         public override string ToString()
         {
-            return $"{Version} {StatusCode.Code} {StatusCode.ReasonPhrase}\r\n" +
+            return $"{Version} {StatusCode.StatusCode} {StatusCode.ReasonPhrase}\r\n" +
                    $"{string.Join("\r\n", Headers.Select(kvp => $"{kvp.Key}: {kvp.Value}"))}\r\n\r\n";
         }
 

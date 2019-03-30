@@ -1,68 +1,83 @@
 ﻿using System.Linq;
-using System.Threading.Tasks;
 using NUnit.Framework;
-using Sox.Core.Websocket.Rfc6455.Framing;
+using Sox.Core.Websocket.Rfc6455.Frames;
 using Sox.Core.Websocket.Rfc6455.Messaging;
+
 
 namespace Sox.Core.Tests.Websocket.Rfc6455.Messaging
 {
     [TestFixture]
     public class MessageTests
     {
-        [TestCase(2, 6)]
-        [TestCase(11, 1)]
-        [TestCase(3, 4)]
-        [TestCase(1, 11)]
-        public async Task Pack_Packs_The_Correct_Amount_Of_Frames(int maxFramePayloadBytes, int expectedFrameCount)
+        [Test]
+        public void Pack_Packs_The_Correct_Amount_Of_Frames()
         {
             // Arrange
             var message = new Message(new byte[11]);
 
             // Act
-            var frames = await message.Pack(maxFramePayloadBytes);
+            var frames1 = message.Pack(2);
+            var frames2 = message.Pack(11);
+            var frames3 = message.Pack(3);
+            var frames4 = message.Pack(1);
+            var frames5 = message.Pack();
 
             // Assert
-            Assert.AreEqual(expectedFrameCount, frames.Count());
+            Assert.Multiple(() =>
+            {
+                Assert.AreEqual(6, frames1.Count());
+                Assert.AreEqual(1, frames2.Count());
+                Assert.AreEqual(4, frames3.Count());
+                Assert.AreEqual(11, frames4.Count());
+                Assert.AreEqual(1, frames5.Count());
+            });
         }
 
-        [TestCase(0, "Hel", OpCode.Text, false)]
-        [TestCase(1, "lo ", OpCode.Continuation, false)]
-        [TestCase(2, "Wor", OpCode.Continuation, false)]
-        [TestCase(3, "ld", OpCode.Continuation, true)]
-        public async Task Pack_Packs_The_Data_Across_Frames_Correctly(int index, string data, OpCode opCode, bool isFinal)
+        [Test]
+        public void Pack_Packs_The_Data_Across_Frames_Correctly()
         {
             // Arrange
             var message = new Message("Hello World");
 
             // Act
-            var frames = (await message.Pack(3))
-                .Select(bytes => Frame.UnpackAsync(bytes).Result)
-                .ToArray();
+            var frames = message.Pack(3).ToArray();
 
             // Assert
             Assert.Multiple(() =>
             {
-                Assert.AreEqual(data, frames[index].DecodedData);
-                Assert.AreEqual(opCode, frames[index].OpCode);
-                Assert.AreEqual(isFinal, frames[index].Headers.IsFinal);
+                Assert.AreEqual("Hel", frames[0].DataAsString());
+                Assert.AreEqual(OpCode.Text, frames[0].OpCode);
+                Assert.AreEqual(false, frames[0].IsFinal);
+
+                Assert.AreEqual("lo ", frames[1].DataAsString());
+                Assert.AreEqual(OpCode.Continuation, frames[1].OpCode);
+                Assert.AreEqual(false, frames[1].IsFinal);
+
+                Assert.AreEqual("Wor", frames[2].DataAsString());
+                Assert.AreEqual(OpCode.Continuation, frames[2].OpCode);
+                Assert.AreEqual(false, frames[2].IsFinal);
+
+                Assert.AreEqual("ld", frames[3].DataAsString());
+                Assert.AreEqual(OpCode.Continuation, frames[3].OpCode);
+                Assert.AreEqual(true, frames[3].IsFinal);
             });
         }
 
         [Test]
-        public async Task Pack_Returns_EmtpyList_If_Null_Data()
+        public void Pack_Returns_EmtpyList_If_Null_Data()
         {
             // Arrange
-            var message = new Message((string)null);
+            var message = new Message((string) null);
 
             // Act
-            var frames = await message.Pack(1);
+            var frames = message.Pack();
 
             // Assert
             Assert.AreEqual(0, frames.Count());
         }
 
         [Test]
-        public async Task Unpack_Unpacks_The_Data_From_All_Frames_Correctly()
+        public void Unpack_Unpacks_The_Data_From_All_Frames_Correctly()
         {
             // Arrange
             const string payload =
@@ -70,8 +85,8 @@ namespace Sox.Core.Tests.Websocket.Rfc6455.Messaging
             var message = new Message(payload);
 
             // Act
-            var frames = (await message.Pack(16)).Select(bytes => Frame.UnpackAsync(bytes).Result).ToArray();
-            var unpacked = await Message.Unpack(frames);
+            var frames = message.Pack(16).ToArray();
+            var unpacked = Message.Unpack(frames);
 
             // Assert
             Assert.Multiple(() =>
@@ -81,10 +96,10 @@ namespace Sox.Core.Tests.Websocket.Rfc6455.Messaging
                 Assert.AreEqual(message.Data, unpacked.Data);
 
                 Assert.AreEqual(OpCode.Text, frames.First().OpCode);
-                Assert.IsFalse(frames.First().Headers.IsFinal);
+                Assert.IsFalse(frames.First().IsFinal);
 
                 Assert.AreEqual(OpCode.Continuation, frames.Last().OpCode);
-                Assert.IsTrue(frames.Last().Headers.IsFinal);
+                Assert.IsTrue(frames.Last().IsFinal);
             });
         }
     }

@@ -1,11 +1,15 @@
 ﻿using System.Net;
+using System.Threading.Tasks;
 
 namespace Sox.Server
 {
+    // FIXME: Comments
     public interface IWebSocketServer
     {
-        void Start(IPAddress ipAddress, int port);
+        // FIXME: Comments
+        void Start();
 
-        void Stop();
+        // FIXME: Comments
+        Task Stop();
     }
 }

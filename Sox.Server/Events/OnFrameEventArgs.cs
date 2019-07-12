@@ -1,12 +1,13 @@
-﻿using System;
+using System;
+using Sox.Core.Websocket.Rfc6455.Framing;
 using Sox.Server.State;
 
 namespace Sox.Server.Events
 {
     /// <summary>
-    /// Arguments supplied to WebsocketServer.OnTextMessage
+    /// Arguments supplied to WebsocketServer.OnConnection
     /// </summary>
-    public class OnTextMessageEventArgs : EventArgs
+    public class OnFrameEventArgs : EventArgs
     {
         /// <summary>
         /// The subject Connection of the event
@@ -14,19 +15,19 @@ namespace Sox.Server.Events
         public readonly Connection Connection;
 
         /// <summary>
-        /// The message payload encoded in UTF8
+        /// The websocket frame that was received
         /// </summary>
-        public readonly string Payload;
+        public readonly Frame Frame;
 
         /// <summary>
         /// Default constructor
         /// </summary>
         /// <param name="connection">The subject Connection of the event</param>
-        /// <param name="payload">The message payload</param>
-        public OnTextMessageEventArgs(Connection connection, string payload)
+        /// <param name="frame">The websocket frame that was received</param>
+        public OnFrameEventArgs(Connection connection, Frame frame)
         {
             Connection = connection;
-            Payload = payload;
+            Frame = frame;
         }
     }
 }

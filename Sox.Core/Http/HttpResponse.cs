@@ -5,21 +5,26 @@ namespace Sox.Core.Http
 {
     public class HttpResponse
     {
-        public string Version { get; set; }
+        public int MajorVersion { get; set; }
+
+        public int MinorVersion { get; set; }
 
         public HttpStatusCode StatusCode { get; set; }
 
-        public HttpHeaders Headers { get; set; }
+        public HttpResponseHeaders Headers { get; set; }
+
+        public string Body { get; set; }
 
         public HttpResponse()
         {
-            Headers = new HttpHeaders();
-            Version = "HTTP/1.1";
+            Headers = new HttpResponseHeaders();
+            MajorVersion = 1;
+            MinorVersion = 1;
         }
 
         public override string ToString()
         {
-            return $"{Version} {StatusCode.StatusCode} {StatusCode.ReasonPhrase}\r\n" +
+            return $"HTTP/{MajorVersion}.{MinorVersion} {StatusCode.Code} {StatusCode.ReasonPhrase}\r\n" +
                    $"{string.Join("\r\n", Headers.Select(kvp => $"{kvp.Key}: {kvp.Value}"))}\r\n\r\n";
         }
 
@@ -37,15 +42,19 @@ namespace Sox.Core.Http
 
                 var spaceIndex = statusLine.IndexOf(' ');
                 var version = statusLine.Substring(0, spaceIndex).Trim();
+                version = version.Substring(0, version.IndexOf("/"));
+                var majorVersion = version.Split('.')[0];
+                var minorVersion = version.Split('.')[1];
 
                 // TODO: Finish implementation
                 spaceIndex = statusLine.IndexOf(' ', spaceIndex + 1);
                 var statusCode = statusLine.Substring(spaceIndex, statusLine.IndexOf(' ', spaceIndex + 1));
-              
+
                 response = new HttpResponse
                 {
                     //StatusCode = new HttpStatusCode(method),
-                    Version = version,
+                    MajorVersion = Int32.Parse(majorVersion),
+                    MinorVersion = Int32.Parse(minorVersion)
                 };
 
                 var headers = lines.Skip(1);
@@ -55,7 +64,7 @@ namespace Sox.Core.Http
                     var colonIndex = header.IndexOf(':');
                     var key = header.Substring(0, colonIndex).Trim();
                     var value = header.Substring(colonIndex + 1).Trim();
-                    response.Headers.Add(key, value);  
+                    response.Headers.Add(key, value);
                 }
 
             }

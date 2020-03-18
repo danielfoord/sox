@@ -25,7 +25,7 @@ namespace Sox.EchoServer
             _server = new WebSocketServer(
                 ipAddress: _ipAddress,
                 port: _port,
-                x509Certificate: new X509Certificate2($"{AppDomain.CurrentDomain.BaseDirectory}sox.pfx", "sox_secret"));
+                x509Certificate: new X509Certificate2($"sox.pfx", "sox"));
 
             _serverWaitHandle = new ManualResetEventSlim();
         }

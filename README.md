@@ -1,8 +1,8 @@
 # Sox
-| Branch | Pipeline | Coverage |
-|---|:---:|:---:|
-| Master | [![pipeline status](https://gitlab.com/danielfoord/sox/badges/master/pipeline.svg)](https://gitlab.com/danielfoord/sox/commits/master) | [![coverage report](https://gitlab.com/danielfoord/sox/badges/master/coverage.svg)](https://gitlab.com/danielfoord/sox/commits/master) |
-| Develop | [![pipeline status](https://gitlab.com/danielfoord/sox/badges/develop/pipeline.svg)](https://gitlab.com/danielfoord/sox/commits/develop) | [![coverage report](https://gitlab.com/danielfoord/sox/badges/develop/coverage.svg)](https://gitlab.com/danielfoord/sox/commits/develop) |
+| Branch | Pipeline
+|---|:---:|
+| Master |![.NET Core](https://github.com/danielfoord/sox/workflows/.NET%20Core/badge.svg?branch=master) |
+| Develop | [![pipeline status](https://gitlab.com/danielfoord/sox/badges/develop/pipeline.svg)](https://gitlab.com/danielfoord/sox/commits/develop)|
 
 A pure websocket implementation for .NET Core
 

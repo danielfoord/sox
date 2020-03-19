@@ -46,12 +46,12 @@ namespace Sox.Server.State
         internal List<Frame> Frames = new List<Frame>();
 
         // Scheduled pinger
-        private PingTimer _pinger;
+        private readonly PingTimer _pinger;
 
         // How long shoud we wait for a stream write before timing out
-        private int StreamWriteTimeoutMs = 2000;
+        private readonly int StreamWriteTimeoutMs = 2000;
 
-        private Queue<byte[]> _outQueue;
+        private readonly Queue<byte[]> _outQueue;
 
         private readonly SemaphoreSlim _outQueueSemaphore = new SemaphoreSlim(1);
 

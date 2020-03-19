@@ -182,7 +182,7 @@ namespace Sox.Server
 
         private async Task HandleHttpUpgrade(TcpClient client)
         {
-            Stream stream = null;
+            Stream stream;
             if (X509Certificate != null)
             {
                 stream = new SslStream(client.GetStream());
@@ -197,13 +197,16 @@ namespace Sox.Server
                 stream = client.GetStream();
             }
 
-
             try
             {
                 var httpRequest = await HttpRequest.ReadAsync(stream);
                 if (httpRequest.Headers.IsWebSocketUpgrade)
                 {
                     await ProcessHandshake(stream, httpRequest);
+                }
+                else
+                {
+                    // TODO: Not websocket request, return HTTP response
                 }
             }
             catch (Exception ex)
@@ -218,39 +221,38 @@ namespace Sox.Server
         {
             var key = $"{httpRequest.Headers.SecWebSocketKey}{WebsocketGuid}";
 
-            using (var sha1 = SHA1.Create())
+            using var sha1 = SHA1.Create();
+
+            var hash = sha1.ComputeHash(key.GetBytes());
+
+            var acceptKey = Convert.ToBase64String(hash);
+
+            var response = new HttpResponse
             {
-                var hash = sha1.ComputeHash(key.GetBytes());
-
-                var acceptKey = Convert.ToBase64String(hash);
-
-                var response = new HttpResponse
-                {
-                    StatusCode = HttpStatusCode.SwitchingProtocols,
-                    Headers = new HttpResponseHeaders
+                StatusCode = HttpStatusCode.SwitchingProtocols,
+                Headers = new HttpResponseHeaders
                     {
                         { "Upgrade", "websocket"},
                         { "Connection", "Upgrade" },
                         { "Sec-WebSocket-Accept", acceptKey }
                     }
-                };
+            };
 
-                // Retrieve the socket from the state object.  
-                var connection = new Connection(stream);
+            // Retrieve the socket from the state object.  
+            var connection = new Connection(stream);
 
-                // Begin sending the data to the remote device.  
-                await connection.Send(response);
+            // Begin sending the data to the remote device.  
+            await connection.Send(response);
 
-                connection.State = ConnectionState.Open;
+            connection.State = ConnectionState.Open;
 
-                _connections[connection.Id] = connection;
+            _connections[connection.Id] = connection;
 
-                Interlocked.Increment(ref ConnectionCount);
+            Interlocked.Increment(ref ConnectionCount);
 
-                OnConnection?.Invoke(this, new OnConnectionEventArgs(connection));
+            OnConnection?.Invoke(this, new OnConnectionEventArgs(connection));
 
-                await StartClientHandler(connection);
-            }
+            await StartClientHandler(connection);
         }
 
         private async Task StartClientHandler(Connection connection)

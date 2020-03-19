@@ -46,11 +46,11 @@ namespace Sox.Core.Http
             };
 
             // Read headers
-            while (!string.IsNullOrWhiteSpace(line = await sr.ReadLineAsync()))
+            while (!string.IsNullOrWhiteSpace((line = await sr.ReadLineAsync())))
             {
                 var colonIndex = line.IndexOf(':');
                 if (colonIndex == -1) continue;
-                var key = line.Substring(0, colonIndex).Trim();
+                var key = line.Substring(0, colonIndex).Trim().ToLower();
                 var value = line.Substring(colonIndex + 1).Trim();
                 httpRequest.Headers.Add(key, value);
             }
@@ -60,14 +60,26 @@ namespace Sox.Core.Http
             {
                 if (!string.IsNullOrEmpty(httpRequest.Headers.ContentLength))
                 {
-                    var contentLength = int.Parse(httpRequest.Headers.ContentLength);
-                    if (contentLength <= 0)
+                    if (int.TryParse(httpRequest.Headers.ContentLength, out var contentLength))
                     {
-                        throw new HttpRequestParseException("Content-Length cannot be smaller or equal to 0");
+                        if (contentLength < 0)
+                        {
+                            throw new HttpRequestParseException("content-length cannot be smaller than 0");
+                        }
+                        var bytesToRead = int.Parse(httpRequest.Headers.ContentLength);
+                        httpRequest.Body = Encoding.UTF8.GetBytes(await sr.ReadBytesAsync(bytesToRead));
                     }
-
-                    var bytesToRead = int.Parse(httpRequest.Headers.ContentLength);
-                    httpRequest.Body = Encoding.UTF8.GetBytes(await sr.ReadBytesAsync(bytesToRead));
+                    else 
+                    {
+                        throw new HttpRequestParseException("content-length is invalid");
+                    }
+                }
+                else 
+                {
+                    if (!httpRequest.Headers.TransferEncoding.Contains("chunked")) 
+                    {
+                        throw new HttpRequestParseException("transfer-encoding header must be set to 'chunked' in content-length header is not present");
+                    }
                 }
             }
 
@@ -134,7 +146,7 @@ namespace Sox.Core.Http
 
         private bool IsBodyPermitted()
         {
-            return this.Method != HttpMethod.Trace;
+            return Method != HttpMethod.Trace;
         }
     }
 }

@@ -18,7 +18,8 @@ namespace Sox.Core.Tests.Http
             var majorVersion = 1;
             var minorVersion = 1;
 
-            var raw = $"{method} {uri} HTTP/{majorVersion}.{minorVersion}" +
+            var raw = $"{method} {uri} HTTP/{majorVersion}.{minorVersion}\r\n" +
+                "content-length: 0\r\n" +
                 "\r\n";
 
             // Assert
@@ -74,6 +75,7 @@ namespace Sox.Core.Tests.Http
             var raw = $"{method} {uri} HTTP/{majorVersion}.{minorVersion}\r\n" +
                 $"Cache-Control: {cacheControl}\r\n" +
                 $"Connection: {connection}\r\n" +
+                "content-length: 0\r\n" +
                 $"Date: {date}\r\n" +
                 $"Pragma: {pragma}\r\n" +
                 $"Trailer: {trailer}\r\n" +
@@ -87,8 +89,9 @@ namespace Sox.Core.Tests.Http
             Assert.NotNull(req);
         }
 
-        [Test]
-        public void Parse_Throws_Exception_On_Invalid_ContentLength()
+        [TestCase(null)]
+        [TestCase("-1")]
+        public void Parse_Throws_Exception_On_Invalid_ContentLength(string contentLength)
         {
             // Arrange
             var method = HttpMethod.Get;
@@ -96,7 +99,6 @@ namespace Sox.Core.Tests.Http
             var majorVersion = 1;
             var minorVersion = 1;
 
-            var contentLength = 0;
             var contentType = "text/plain";
             var date = DateTime.Now.ToUniversalTime().ToShortTimeString();
 
@@ -132,11 +134,12 @@ namespace Sox.Core.Tests.Http
 
 
             var raw = $"{method} {uri} HTTP/{majorVersion}.{minorVersion}\r\n" +
-                $"Cache-Control: {cacheControl}\r\n" +
-                $"Connection: {connection}\r\n" +
-                $"Date: {date}\r\n" +
-                $"Pragma: {pragma}\r\n" +
-                $"Trailer: {trailer}\r\n" +
+                $"cache-control: {cacheControl}\r\n" +
+                $"connection: {connection}\r\n" +
+                "content-length: 0\r\n" +
+                $"date: {date}\r\n" +
+                $"pragma: {pragma}\r\n" +
+                $"trailer: {trailer}\r\n" +
                 "\r\n";
 
             // Act
@@ -164,15 +167,14 @@ namespace Sox.Core.Tests.Http
             var majorVersion = 1;
             var minorVersion = 1;
 
-            var contentLength = 12;
             var contentType = "text/plain";
+            var body = "Hello \nWorld";
 
             var raw = $"{method} {uri} HTTP/{majorVersion}.{minorVersion}\r\n" +
-                $"Content-Length: {contentLength}\r\n" +
+                $"Content-Length: {body.Length}\r\n" +
                 $"Content-Type: {contentType}\r\n" +
                 "\r\n" +
-                "Hello \n" +
-                "World";
+                $"{body}";
 
             // Act
             var req = HttpRequest.Parse(raw);
@@ -184,7 +186,7 @@ namespace Sox.Core.Tests.Http
             Assert.AreEqual(minorVersion, req.MinorVersion);
 
             Assert.AreEqual(contentType, req.Headers.ContentType);
-            Assert.AreEqual(contentLength.ToString(), req.Headers.ContentLength);
+            Assert.AreEqual(body.Length.ToString(), req.Headers.ContentLength);
             Assert.AreEqual("Hello \nWorld", System.Text.Encoding.UTF8.GetString(req.Body));
         }
 
@@ -201,8 +203,8 @@ namespace Sox.Core.Tests.Http
             var contentType = "text/plain";
 
             var raw = $"{method} {uri} HTTP/{majorVersion}.{minorVersion}\r\n" +
-                $"Content-Length: {contentLength}\r\n" +
-                $"Content-Type: {contentType}\r\n" +
+                $"content-length: {contentLength}\r\n" +
+                $"content-type: {contentType}\r\n" +
                 "\r\n" +
                 "Hello \n" +
                 "World";
@@ -215,7 +217,7 @@ namespace Sox.Core.Tests.Http
         }
 
         [Test]
-        public void Parse_Can_Read_Chuncked_Body()
+        public void Parse_Can_Read_Chunked_Body()
         {
             // Arrange
             // Act

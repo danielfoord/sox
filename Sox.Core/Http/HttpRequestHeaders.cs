@@ -12,78 +12,78 @@ namespace Sox.Core.Http
         }
 
         // General headers
-        public string CacheControl => ReadValue("Cache-Control");
+        public string CacheControl => ReadValue("cache-control");
 
-        public string Connection => ReadValue("Connection");
+        public string Connection => ReadValue("connection");
 
-        public string ContentType => ReadValue("Content-Type");
+        public string ContentType => ReadValue("content-type");
 
-        public string ContentLength => ReadValue("Content-Length");
+        public string ContentLength => ReadValue("content-length");
 
-        public string Date => ReadValue("Date");
+        public string Date => ReadValue("date");
 
-        public string Pragma => ReadValue("Pragma");
+        public string Pragma => ReadValue("pragma");
 
-        public string Trailer => ReadValue("Trailer");
+        public string Trailer => ReadValue("trailer");
 
-        public string TransferEncoding => ReadValue("Transfer-Encoding");
+        public string TransferEncoding => ReadValue("transfer-encoding");
 
-        public string Upgrade => ReadValue("Upgrade");
+        public string Upgrade => ReadValue("upgrade");
 
-        public string Via => ReadValue("Via");
+        public string Via => ReadValue("via");
 
-        public string Warning => ReadValue("Warning");
+        public string Warning => ReadValue("warning");
 
         // Request headers
-        public string Accept => ReadValue("Accept");
+        public string Accept => ReadValue("accept");
 
-        public string AcceptCharset => ReadValue("Accept-Charset");
+        public string AcceptCharset => ReadValue("accept-charset");
 
-        public string AcceptEncoding => ReadValue("Accept-Encoding");
+        public string AcceptEncoding => ReadValue("accept-encoding");
 
-        public string AcceptLanguage => ReadValue("Accept-Language");
+        public string AcceptLanguage => ReadValue("accept-language");
 
-        public string Authorization => ReadValue("Authorization");
+        public string Authorization => ReadValue("authorization");
 
-        public string Expect => ReadValue("Expect");
+        public string Expect => ReadValue("expect");
 
-        public string From => ReadValue("From");
+        public string From => ReadValue("from");
 
-        public string Host => ReadValue("Host");
+        public string Host => ReadValue("host");
 
-        public string IfMatch => ReadValue("If-Match");
+        public string IfMatch => ReadValue("if-match");
 
-        public string IfModifiedSince => ReadValue("If-Modified-Since");
+        public string IfModifiedSince => ReadValue("if-modified-since");
 
-        public string IfNoneMatch => ReadValue("If-None-Match");
+        public string IfNoneMatch => ReadValue("if-none-match");
 
-        public string IfRange => ReadValue("If-Range");
+        public string IfRange => ReadValue("if-range");
 
-        public string IfUnmodifiedSince => ReadValue("If-Unmodified-Since");
+        public string IfUnmodifiedSince => ReadValue("if-unmodified-since");
 
-        public string MaxForwards => ReadValue("Max-Forwards");
+        public string MaxForwards => ReadValue("max-forwards");
 
-        public string ProxyAuthorization => ReadValue("Proxy-Authorization");
+        public string ProxyAuthorization => ReadValue("proxy-authorization");
 
-        public string Range => ReadValue("Range");
+        public string Range => ReadValue("range");
 
-        public string Referer => ReadValue("Referer");
+        public string Referer => ReadValue("referer");
 
-        public string TE => ReadValue("TE");
+        public string TE => ReadValue("te");
 
-        public string UserAgent => ReadValue("User-Agent");
+        public string UserAgent => ReadValue("user-agent");
 
-        public string Origin => ReadValue("Origin");
+        public string Origin => ReadValue("origin");
 
         // Websocket specific headers
-        public string SecWebSocketKey => ReadValue("Sec-WebSocket-Key");
+        public string SecWebSocketKey => ReadValue("sec-websocket-key");
 
-        public string SecWebSocketProtocol => ReadValue("Sec-WebSocket-Protocol");
+        public string SecWebSocketProtocol => ReadValue("sec-websocket-protocol");
 
-        public string SecWebSocketVersion => ReadValue("Sec-WebSocket-Version");
+        public string SecWebSocketVersion => ReadValue("sec-websocket-version");
 
         public bool IsWebSocketUpgrade => Upgrade == "websocket" &&
-                                          Connection.Contains("Upgrade") &&
+                                          Connection.Contains("upgrade") &&
                                           Host != null &&
                                           SecWebSocketKey != null &&
                                           SecWebSocketVersion != null;

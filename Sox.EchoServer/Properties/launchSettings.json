@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Sox.EchoServer": {
+      "commandName": "Project",
+      "commandLineArgs": "ws"
+    }
+  }
+}

@@ -12,26 +12,32 @@ namespace Sox.EchoServer
     {
         private static WebSocketServer _server;
 
-        private static ManualResetEventSlim _serverWaitHandle;
+        private static readonly ManualResetEventSlim _serverWaitHandle;
 
-        private static IPAddress _ipAddress = IPAddress.Loopback;
-
-        private static int _port = 44315;
+        private static readonly IPAddress _ipAddress = IPAddress.Loopback;
 
         private static int MessageCount;
 
         static Program()
         {
-            _server = new WebSocketServer(
-                ipAddress: _ipAddress,
-                port: _port,
-                x509Certificate: new X509Certificate2($"sox.pfx", "sox"));
-
             _serverWaitHandle = new ManualResetEventSlim();
         }
 
         static void Main(string[] args)
         {
+            if (args[0] == "ws")
+            {
+                _server = new WebSocketServer(
+                  ipAddress: _ipAddress,
+                  port: 80);
+            }
+            else 
+            {
+                _server = new WebSocketServer(
+                  ipAddress: _ipAddress,
+                  port: 44315,
+                  x509Certificate: new X509Certificate2($"sox.pfx", "sox"));
+            }
             AssemblyLoadContext.Default.Unloading += OnSigTerm;
             Console.CancelKeyPress += OnSigTerm;
             Console.WriteLine($"Sox.EchoServer exited with code: {StartServer()}");
@@ -78,12 +84,12 @@ namespace Sox.EchoServer
 
                     _server.OnFrame += (sender, eventArgs) =>
                     {
-                        Console.WriteLine($"CID: {eventArgs.Connection.Id} | Received WS Frame ({eventArgs.Frame.OpCode.ToString()}) | : Plength - {eventArgs.Frame.PayloadLength:N0}");
+                        Console.WriteLine($"CID: {eventArgs.Connection.Id} | Received WS Frame ({eventArgs.Frame.OpCode}) | : Plength - {eventArgs.Frame.PayloadLength:N0}");
                     };
 
                     Console.WriteLine($"Starting Sox server...");
                     _server.Start();
-                    Console.WriteLine($"Sox server listening on {_server.Protocol.ToString().ToLower()}://{_ipAddress}:{_port}");
+                    Console.WriteLine($"Sox server listening on {_server.Protocol.ToString().ToLower()}://{_server.IpAddress}:{_server.Port}");
 
                     _serverWaitHandle.Wait();
 

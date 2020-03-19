@@ -110,9 +110,9 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
             switch (type)
             {
                 case MessageType.Binary:
-                    return Frame.CreateBinary(payload: payload, shouldMask: shouldMask, isFinal: isFinal);
+                    return CreateBinary(payload: payload, shouldMask: shouldMask, isFinal: isFinal);
                 case MessageType.Text:
-                    return Frame.CreateText(payload: payload.GetString(), shouldMask: shouldMask, isFinal: isFinal);
+                    return CreateText(payload: payload.GetString(), shouldMask: shouldMask, isFinal: isFinal);
                 default:
                     throw new Exception($"MessageType {type} is not a valid data frame type");
             }
@@ -264,10 +264,8 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
         /// <returns>A WebSocket message frame</returns>
         public static async Task<Frame> UnpackAsync(byte[] bytes)
         {
-            using (var stream = new MemoryStream(bytes))
-            {
-                return await UnpackAsync(stream);
-            }
+            using var stream = new MemoryStream(bytes);
+            return await UnpackAsync(stream);
         }
 
         /// <summary>
@@ -276,30 +274,28 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
         /// <returns>A WebSocket message frame bytes</returns>
         public async Task<byte[]> PackAsync()
         {
-            using (var stream = new MemoryStream { Position = 0 })
+            using var stream = new MemoryStream { Position = 0 };
+            await stream.WriteBytesAsync(await Headers.PackAsync());
+
+            if (Headers.ShouldMask)
             {
-                await stream.WriteBytesAsync(await Headers.PackAsync());
-
-                if (Headers.ShouldMask)
-                {
-                    await stream.WriteBytesAsync(MaskingKey);
-                    // Mask the payload data with a simple XOR using the masking key
-                    await stream.WriteBytesAsync(Xor(MaskingKey, Data));
-                }
-                else
-                {
-                    // If this is a close frame status code, it needs to be BigEndian
-                    if (Headers.OpCode == OpCode.Close)
-                    {
-                        EnsureBigEndian(Data);
-                    }
-                    await stream.WriteBytesAsync(Data);
-                }
-
-                await stream.FlushAsync();
-
-                return stream.ToArray();
+                await stream.WriteBytesAsync(MaskingKey);
+                // Mask the payload data with a simple XOR using the masking key
+                await stream.WriteBytesAsync(Xor(MaskingKey, Data));
             }
+            else
+            {
+                // If this is a close frame status code, it needs to be BigEndian
+                if (Headers.OpCode == OpCode.Close)
+                {
+                    EnsureBigEndian(Data);
+                }
+                await stream.WriteBytesAsync(Data);
+            }
+
+            await stream.FlushAsync();
+
+            return stream.ToArray();
         }
 
         private static byte[] Xor(IReadOnlyList<byte> maskingKey, IReadOnlyList<byte> data)

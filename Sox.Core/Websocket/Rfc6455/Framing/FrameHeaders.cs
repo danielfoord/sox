@@ -116,43 +116,42 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
 
         public async Task<byte[]> PackAsync()
         {
-            using (var stream = new MemoryStream { Position = 0 })
+            using var stream = new MemoryStream { Position = 0 };
+
+            // First byte values
+            var finalMask = IsFinal ? 0x80 : 0x0;
+            var rsv1Mask = Rsv1 ? 0x40 : 0x0;
+            var rsv2Mask = Rsv2 ? 0x20 : 0x0;
+            var rsv3Mask = Rsv3 ? 0x10 : 0x0;
+            var opCode = (int)OpCode;
+
+            // Second byte values
+            var mask = ShouldMask ? 0x80 : 0x0;
+            stream.WriteByte((byte)(finalMask | rsv1Mask | rsv2Mask | rsv3Mask | opCode));
+
+            // Pack the shouldMask and payload length (1bit+7bit | 1bit+7bit+16bit | 1bit+7bit+64bit)
+            if (PayloadLength < 126)
             {
-                // First byte values
-                var finalMask = IsFinal ? 0x80 : 0x0;
-                var rsv1Mask = Rsv1 ? 0x40 : 0x0;
-                var rsv2Mask = Rsv2 ? 0x20 : 0x0;
-                var rsv3Mask = Rsv3 ? 0x10 : 0x0;
-                var opCode = (int)OpCode;
-
-                // Second byte values
-                var mask = ShouldMask ? 0x80 : 0x0;
-                stream.WriteByte((byte)(finalMask | rsv1Mask | rsv2Mask | rsv3Mask | opCode));
-
-                // Pack the shouldMask and payload length (1bit+7bit | 1bit+7bit+16bit | 1bit+7bit+64bit)
-                if (PayloadLength < 126)
-                {
-                    stream.WriteByte((byte)(mask | (ushort)PayloadLength));
-                }
-                else if (PayloadLength >= 126 && PayloadLength <= ushort.MaxValue)
-                {
-                    stream.WriteByte((byte)(mask | 126));
-                    var lengthBytes = BitConverter.GetBytes((ushort)PayloadLength);
-                    EnsureBigEndian(lengthBytes);
-                    await stream.WriteBytesAsync(lengthBytes);
-                }
-                else if (PayloadLength > ushort.MaxValue)
-                {
-                    stream.WriteByte((byte)(mask | 127));
-                    var lengthBytes = BitConverter.GetBytes((ulong)PayloadLength);
-                    EnsureBigEndian(lengthBytes);
-                    await stream.WriteBytesAsync(lengthBytes);
-                }
-
-                await stream.FlushAsync();
-
-                return stream.ToArray();
+                stream.WriteByte((byte)(mask | (ushort)PayloadLength));
             }
+            else if (PayloadLength >= 126 && PayloadLength <= ushort.MaxValue)
+            {
+                stream.WriteByte((byte)(mask | 126));
+                var lengthBytes = BitConverter.GetBytes((ushort)PayloadLength);
+                EnsureBigEndian(lengthBytes);
+                await stream.WriteBytesAsync(lengthBytes);
+            }
+            else if (PayloadLength > ushort.MaxValue)
+            {
+                stream.WriteByte((byte)(mask | 127));
+                var lengthBytes = BitConverter.GetBytes((ulong)PayloadLength);
+                EnsureBigEndian(lengthBytes);
+                await stream.WriteBytesAsync(lengthBytes);
+            }
+
+            await stream.FlushAsync();
+
+            return stream.ToArray();
         }
     }
 }

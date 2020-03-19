@@ -1,21 +1,21 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27703.2026
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29911.84
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sox.Core", "Sox.Core\Sox.Core.csproj", "{B40AFD56-90B0-430D-B49B-9DC432CB891A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.Core", "Sox.Core\Sox.Core.csproj", "{B40AFD56-90B0-430D-B49B-9DC432CB891A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sox.Core.Tests", "Sox.Core.Tests\Sox.Core.Tests.csproj", "{3DD5942A-DFFD-4908-AD8C-8A4690235C08}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.Core.Tests", "Sox.Core.Tests\Sox.Core.Tests.csproj", "{3DD5942A-DFFD-4908-AD8C-8A4690235C08}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sox.Server", "Sox.Server\Sox.Server.csproj", "{84E01474-FC1B-47F1-8D4D-812CCC313F36}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.Server", "Sox.Server\Sox.Server.csproj", "{84E01474-FC1B-47F1-8D4D-812CCC313F36}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sox.EchoServer", "Sox.EchoServer\Sox.EchoServer.csproj", "{796D7745-BC63-4756-BCA6-D11D3A9F845B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.EchoServer", "Sox.EchoServer\Sox.EchoServer.csproj", "{796D7745-BC63-4756-BCA6-D11D3A9F845B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{06ED0324-C795-4741-899E-A9B496E9C207}"
-ProjectSection(SolutionItems) = preProject
-	run-echo-server.sh = run-echo-server.sh
-	test.sh = test.sh
-EndProjectSection
+	ProjectSection(SolutionItems) = preProject
+		run-echo-server.sh = run-echo-server.sh
+		test.sh = test.sh
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

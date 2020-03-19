@@ -76,7 +76,7 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
         public static async Task<FrameHeaders> Unpack(Stream stream)
         {
             var bytes = await stream.ReadBytesAsync(2);
-            var payloadLength = (bytes[1] & 0x7F);
+            var payloadLength = bytes[1] & 0x7F;
 
             if (payloadLength == 126)
             {
@@ -89,7 +89,7 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
                 var lenBytes = await stream.ReadBytesAsync(8);
                 EnsureBigEndian(lenBytes);
                 var length = BitConverter.ToUInt64(lenBytes, 0);
-                if (length > Int32.MaxValue)
+                if (length > int.MaxValue)
                 {
                     throw new OverflowException("Frame payload length cannot exceed maximum supported Array dimensions");
                 }

@@ -32,50 +32,48 @@ namespace Sox.Core.Http
 
         public static async Task<HttpRequest> ReadAsync(Stream stream)
         {
-            string raw = string.Empty;
-            using (var sr = new StreamReader(stream, Encoding.UTF8, true, 1024, true))
+            using var sr = new StreamReader(stream, Encoding.UTF8, true, 1024, true);
+
+            string line = await sr.ReadLineAsync();
+            var (method, uri, majorVersion, minorVersion) = ParseRequestLine(line);
+
+            var httpRequest = new HttpRequest
             {
-                string line = await sr.ReadLineAsync();
-                var (method, uri, majorVersion, minorVersion) = ParseRequestLine(line);
+                Method = method,
+                Uri = uri,
+                MajorVersion = majorVersion,
+                MinorVersion = minorVersion
+            };
 
-                var httpRequest = new HttpRequest
-                {
-                    Method = method,
-                    Uri = uri,
-                    MajorVersion = majorVersion,
-                    MinorVersion = minorVersion
-                };
-
-                // Read headers
-                while (!string.IsNullOrWhiteSpace((line = await sr.ReadLineAsync())))
-                {
-                    var colonIndex = line.IndexOf(':');
-                    if (colonIndex == -1) continue;
-                    var key = line.Substring(0, colonIndex).Trim();
-                    var value = line.Substring(colonIndex + 1).Trim();
-                    httpRequest.Headers.Add(key, value);
-                }
-
-                // Read content-length body
-                if (httpRequest.IsBodyPermitted())
-                {
-                    if (!string.IsNullOrEmpty(httpRequest.Headers.ContentLength))
-                    {
-                        var contentLength = int.Parse(httpRequest.Headers.ContentLength);
-                        if (contentLength <= 0)
-                        {
-                            throw new HttpRequestParseException("Content-Length cannot be smaller or equal to 0");
-                        }
-
-                        var bytesToRead = int.Parse(httpRequest.Headers.ContentLength);
-                        httpRequest.Body = Encoding.UTF8.GetBytes(await sr.ReadBytesAsync(bytesToRead));
-                    }
-                }
-
-                // TODO: Read chunked body
-
-                return httpRequest;
+            // Read headers
+            while (!string.IsNullOrWhiteSpace(line = await sr.ReadLineAsync()))
+            {
+                var colonIndex = line.IndexOf(':');
+                if (colonIndex == -1) continue;
+                var key = line.Substring(0, colonIndex).Trim();
+                var value = line.Substring(colonIndex + 1).Trim();
+                httpRequest.Headers.Add(key, value);
             }
+
+            // Read content-length body
+            if (httpRequest.IsBodyPermitted())
+            {
+                if (!string.IsNullOrEmpty(httpRequest.Headers.ContentLength))
+                {
+                    var contentLength = int.Parse(httpRequest.Headers.ContentLength);
+                    if (contentLength <= 0)
+                    {
+                        throw new HttpRequestParseException("Content-Length cannot be smaller or equal to 0");
+                    }
+
+                    var bytesToRead = int.Parse(httpRequest.Headers.ContentLength);
+                    httpRequest.Body = Encoding.UTF8.GetBytes(await sr.ReadBytesAsync(bytesToRead));
+                }
+            }
+
+            // TODO: Read chunked body
+
+            return httpRequest;
         }
 
         public static bool TryParse(string request, out HttpRequest httpRequest)

@@ -30,35 +30,16 @@ namespace Sox.Core.Tests.Http
             Assert.AreEqual(minorVersion, req.MinorVersion);
         }
 
-        [Test]
-        public void Parse_Throws_Exception_If_Invalid_Request_Line()
+        [TestCase("GET / \r\n")]
+        [TestCase("GET / HTTP/1.1 abc\r\n")]
+        public void Parse_Throws_Exception_If_Invalid_Request_Line(string requestLine)
         {
-            // Arrange
-            var raw = "GET /" +
-                "\r\n";
-
             // Assert
             Assert.Throws<HttpRequestParseException>(() =>
             {
-                HttpRequest.Parse(raw);
+                HttpRequest.Parse(requestLine);
             });
         }
-
-
-        [Test]
-        public void Parse_Throws_Exception_If_Invalid_Request_Line_2()
-        {
-            // Arrange
-            var raw = "GET / HTTP/1.1 abc" +
-                "\r\n";
-
-            // Assert
-            Assert.Throws<HttpRequestParseException>(() =>
-            {
-                HttpRequest.Parse(raw);
-            });
-        }
-
 
         [Test]
         public void Try_Parse_Outs_Null_And_Returns_False_On_Invalid_Request()
@@ -185,7 +166,6 @@ namespace Sox.Core.Tests.Http
 
             var contentLength = 12;
             var contentType = "text/plain";
-            var date = DateTime.Now.ToUniversalTime().ToShortTimeString();
 
             var raw = $"{method} {uri} HTTP/{majorVersion}.{minorVersion}\r\n" +
                 $"Content-Length: {contentLength}\r\n" +
@@ -219,7 +199,6 @@ namespace Sox.Core.Tests.Http
 
             var contentLength = 12;
             var contentType = "text/plain";
-            var date = DateTime.Now.ToUniversalTime().ToShortTimeString();
 
             var raw = $"{method} {uri} HTTP/{majorVersion}.{minorVersion}\r\n" +
                 $"Content-Length: {contentLength}\r\n" +
@@ -233,6 +212,14 @@ namespace Sox.Core.Tests.Http
 
             // Assert
             Assert.AreEqual(raw, req.ToString());
+        }
+
+        [Test]
+        public void Parse_Can_Read_Chuncked_Body()
+        {
+            // Arrange
+            // Act
+            // Assert
         }
     }
 }

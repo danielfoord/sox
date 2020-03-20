@@ -24,23 +24,5 @@ namespace Sox.Core.Extensions
                 action.Invoke(item);
             }
         }
-
-        /// <summary>
-        /// Map an Enumerable of one type to another
-        /// </summary>
-        /// <typeparam name="InT">The type to map from</typeparam>
-        /// <typeparam name="OutT">The type to map to</typeparam>
-        /// <param name="source">The source Enumerable</param>
-        /// <param name="mapper">The Func that maps one type to the other</param>
-        /// <returns>An enumerable of the target type</returns>
-        public static IEnumerable<OutT> Map<InT, OutT>(this IEnumerable<InT> source, Func<InT, OutT> mapper)
-        {
-            if (source == null) throw new NullReferenceException(nameof(source));
-            if (mapper == null) throw new NullReferenceException(nameof(mapper));
-
-            var mapped = new List<OutT>();
-            source.ForEach(item => mapped.Add(mapper.Invoke(item)));
-            return mapped;
-        }
     }
 }

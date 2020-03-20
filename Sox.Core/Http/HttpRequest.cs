@@ -56,7 +56,7 @@ namespace Sox.Core.Http
             }
 
             // Read content-length body
-            if (httpRequest.IsBodyPermitted())
+            if (httpRequest.IsBodyPermitted() && !httpRequest.Headers.IsWebSocketUpgrade)
             {
                 if (!string.IsNullOrEmpty(httpRequest.Headers.ContentLength))
                 {
@@ -68,10 +68,6 @@ namespace Sox.Core.Http
                         }
                         var bytesToRead = int.Parse(httpRequest.Headers.ContentLength);
                         httpRequest.Body = Encoding.UTF8.GetBytes(await sr.ReadBytesAsync(bytesToRead));
-                    }
-                    else
-                    {
-                        throw new HttpRequestParseException("content-length is invalid");
                     }
                 }
                 else

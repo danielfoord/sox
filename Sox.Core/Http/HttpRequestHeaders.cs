@@ -83,7 +83,7 @@ namespace Sox.Core.Http
         public string SecWebSocketVersion => ReadValue("sec-websocket-version");
 
         public bool IsWebSocketUpgrade => Upgrade == "websocket" &&
-                                          Connection.Contains("upgrade") &&
+                                          Connection.ToLower().Contains("upgrade") &&
                                           Host != null &&
                                           SecWebSocketKey != null &&
                                           SecWebSocketVersion != null;

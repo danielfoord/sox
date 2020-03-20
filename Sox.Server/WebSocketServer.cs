@@ -267,12 +267,6 @@ namespace Sox.Server
 
                         OnFrame?.Invoke(this, new OnFrameEventArgs(connection, frame));
 
-                        if (frame.PayloadLength > MaxFramePayloadBytes)
-                        {
-                            await CloseConnection(connection, CloseStatusCode.MessageTooBig);
-                            continue;
-                        }
-
                         await HandleFrame(connection, frame);
                     }
                     catch (Exception ex)

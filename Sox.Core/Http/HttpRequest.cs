@@ -35,6 +35,11 @@ namespace Sox.Core.Http
             using var sr = new StreamReader(stream, Encoding.UTF8, true, 1024, true);
 
             string line = await sr.ReadLineAsync();
+            if (line == null)
+            {
+                return null;
+            }
+
             var (method, uri, majorVersion, minorVersion) = ParseRequestLine(line);
 
             var httpRequest = new HttpRequest

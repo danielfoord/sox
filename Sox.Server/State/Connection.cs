@@ -113,8 +113,7 @@ namespace Sox.Server.State
             {
                 State = ConnectionState.Closing;
                 _pinger.Stop();
-                await _stream.WriteAndFlushAsync(
-                    await Frame.CreateClose(reason).PackAsync());
+                await Enqueue(Frame.CreateClose(reason));
                 State = ConnectionState.Closed;
             }
         }

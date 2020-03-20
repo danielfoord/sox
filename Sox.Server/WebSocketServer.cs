@@ -82,7 +82,16 @@ namespace Sox.Server
         /// <summary>
         /// The amount of active connections
         /// </summary>
-        public long ConnectionCount = 0;
+        public long ConnectionCount
+        {
+            get
+            {
+                lock (_locker)
+                {
+                    return _connectionCount;
+                }
+            }
+        }
 
         /// <summary>
         /// The server protocol
@@ -94,6 +103,10 @@ namespace Sox.Server
         private TcpListener _server;
 
         private readonly ConcurrentDictionary<string, Connection> _connections = new ConcurrentDictionary<string, Connection>();
+
+        private readonly object _locker = new object();
+
+        private long _connectionCount = 0;
 
         /// <summary>
         /// Default constructor
@@ -140,7 +153,7 @@ namespace Sox.Server
                 }
                 catch (Exception ex)
                 {
-                    if (!(ex is ObjectDisposedException))
+                    if (!(ex is ObjectDisposedException) && (ex is SocketException))
                     {
                         Console.WriteLine(ex);
                         client?.Close();
@@ -200,14 +213,18 @@ namespace Sox.Server
             try
             {
                 var httpRequest = await HttpRequest.ReadAsync(stream);
-                if (httpRequest.Headers.IsWebSocketUpgrade)
+                if (httpRequest != null)
                 {
-                    await ProcessHandshake(stream, httpRequest);
+                    if (httpRequest.Headers.IsWebSocketUpgrade)
+                    {
+                        await ProcessHandshake(stream, httpRequest);
+                    }
+                    else
+                    {
+                        // TODO: Not websocket request, return HTTP response
+                    }
                 }
-                else
-                {
-                    // TODO: Not websocket request, return HTTP response
-                }
+
             }
             catch (Exception ex)
             {
@@ -248,7 +265,7 @@ namespace Sox.Server
 
             _connections[connection.Id] = connection;
 
-            Interlocked.Increment(ref ConnectionCount);
+            Interlocked.Increment(ref _connectionCount);
 
             OnConnection?.Invoke(this, new OnConnectionEventArgs(connection));
 
@@ -349,7 +366,7 @@ namespace Sox.Server
         private async Task CloseConnection(Connection connection, CloseStatusCode reason)
         {
             await connection.Close(reason);
-            Interlocked.Decrement(ref ConnectionCount);
+            Interlocked.Decrement(ref _connectionCount);
             OnDisconnection?.Invoke(this, new OnDisconnectionEventArgs(connection));
             RemoveConnection(connection.Id);
         }

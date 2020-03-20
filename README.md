@@ -80,6 +80,10 @@ Create a signed certificate with your key:
 openssl pkcs12 -export -out sox.pfx -inkey localhost.key -in localhost.crt
 ```
 
-If the above is still not working, add rootCA.pem to the CA's in your browser.
+Add rootCA.pem to the CA's in your browser.
+
+`dotnet dev-certs https -ep "sox.pfx" -p "sox" --trust`
+
+
 
 

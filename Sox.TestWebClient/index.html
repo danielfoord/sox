@@ -29,6 +29,13 @@
     .disconnected-indicator {
       color: #ff4500;
     }
+
+    .image-box {
+      display: flex;
+      background: grey;
+      width: 100%;
+      min-height: 100px;
+    }
   </style>
 
 </head>
@@ -86,6 +93,13 @@
         <small id="smlMessageSize">Message Size: 0</small>
       </div>
     </div>
+
+    <div class="col-lg-12" style="margin-top: 20px">
+      <div id="imageBox" class="image-box">
+
+      </div>
+    </div>
+
     <div class="col-lg-12"
       style="margin-top: 20px">
       <h3>Connections</h3>
@@ -107,6 +121,7 @@
     const tblContainer = $('#tableContainer');
     const btnSpamMessage = $('#btnSpamMessage');
     const smlMessageSize = $('#smlMessageSize');
+    const imageBox = $('#imageBox');
 
     let spamMessages = false;
     let spamInterval = null;
@@ -163,6 +178,18 @@
       console.debug('awdawd');
       smlMessageSize.text(`Message size: ${txtMessage.val().length}`);
     });
+
+    document.querySelector('#imageBox').addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+
+    document.querySelector('#imageBox').addEventListener('drop', e => {
+      e.preventDefault();
+      console.debug(e, e.dataTransfer.files, e.dataTransfer.items);
+      // const data = e.dataTransfer.getData("text/plain");
+      // e.target.html = data;
+    })
 
     function debug(msg) {
       console.debug(msg);

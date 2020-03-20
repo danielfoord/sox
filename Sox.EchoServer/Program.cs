@@ -18,6 +18,8 @@ namespace Sox.EchoServer
 
         private static int MessageCount;
 
+        private static object locker = new object();
+
         static Program()
         {
             _serverWaitHandle = new ManualResetEventSlim();
@@ -31,7 +33,7 @@ namespace Sox.EchoServer
                   ipAddress: _ipAddress,
                   port: 80);
             }
-            else 
+            else
             {
                 _server = new WebSocketServer(
                   ipAddress: _ipAddress,
@@ -65,8 +67,11 @@ namespace Sox.EchoServer
                     {
                         var connection = eventArgs.Connection;
                         var message = eventArgs.Payload;
-                        Interlocked.Increment(ref MessageCount);
-                        Console.WriteLine($"{connection.Id} sent {message} (message #{MessageCount})");
+                        lock (locker)
+                        {
+                            Interlocked.Increment(ref MessageCount);
+                            Console.WriteLine($"{connection.Id} sent {message} (message #{MessageCount})");
+                        }
                         await connection.Send($"{connection.Id} sent {message}");
                     };
 

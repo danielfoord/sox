@@ -2,7 +2,7 @@
   "profiles": {
     "Sox.EchoServer": {
       "commandName": "Project",
-      "commandLineArgs": "ws"
+      "commandLineArgs": "wss"
     }
   }
 }

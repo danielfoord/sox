@@ -143,10 +143,7 @@ namespace Sox.Core.Http
         public override string ToString()
         {
             var str = $"{Method} {Uri} HTTP/{MajorVersion}.{MinorVersion}\r\n";
-            Headers.ForEach((kvp) =>
-            {
-                str += $"{kvp.Key}: {kvp.Value}\r\n";
-            });
+            str += string.Join(string.Empty, Headers.Map(header => $"{header.Key}: {header.Value}\r\n"));
             str += "\r\n";
             str += Encoding.UTF8.GetString(Body);
             return str;

@@ -69,19 +69,45 @@ namespace Sox.Core.Http
                         var bytesToRead = int.Parse(httpRequest.Headers.ContentLength);
                         httpRequest.Body = Encoding.UTF8.GetBytes(await sr.ReadBytesAsync(bytesToRead));
                     }
-                    else 
+                    else
                     {
                         throw new HttpRequestParseException("content-length is invalid");
                     }
                 }
-                else 
+                else
                 {
-                    if (!httpRequest.Headers.TransferEncoding.Contains("chunked")) 
+                    if (!httpRequest.Headers.TransferEncoding.Contains("chunked"))
                     {
                         throw new HttpRequestParseException("transfer-encoding header must be set to 'chunked' in content-length header is not present");
                     }
                 }
             }
+
+            //19.4.6 Introduction of Transfer - Encoding
+
+            //HTTP / 1.1 introduces the Transfer - Encoding header field(section
+            //14.41). Proxies / gateways MUST remove any transfer-coding prior to
+            //forwarding a message via a MIME-compliant protocol.
+
+            //A process for decoding the "chunked" transfer - coding(section 3.6)
+            //can be represented in pseudo - code as:
+
+            //    length := 0
+            //    read chunk - size, chunk - extension(if any) and CRLF
+            //    while (chunk - size > 0)
+            //         {
+            //             read chunk-data and CRLF
+            //       append chunk-data to entity-body
+            //       length:= length + chunk - size
+            //       read chunk-size and CRLF
+            //    }
+            //         read entity-header
+            //    while (entity - header not empty) {
+            //             append entity-header to existing header fields
+            //         read entity-header
+            //      }
+            //         Content - Length := length
+            //    Remove "chunked" from Transfer-Encoding
 
             // TODO: Read chunked body
 

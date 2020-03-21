@@ -1,8 +1,8 @@
 # Sox
-| Branch | Pipeline
+| Branch | Platform
 |---|:---:|
-| Master |![.NET Core](https://github.com/danielfoord/sox/workflows/.NET%20Core/badge.svg?branch=master) |
-| Develop | [![pipeline status](https://gitlab.com/danielfoord/sox/badges/develop/pipeline.svg)](https://gitlab.com/danielfoord/sox/commits/develop)|
+| Master | ![Windows](https://github.com/danielfoord/sox/workflows/Windows/badge.svg?branch=master) |
+| Master | ![Linux](https://github.com/danielfoord/sox/workflows/Linux/badge.svg?branch=master) |
 
 A pure websocket implementation for .NET Core
 

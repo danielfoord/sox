@@ -242,7 +242,6 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
 
             if (headers.PayloadLength > 0)
             {
-
                 data = headers.ShouldMask 
                     ? Xor(maskingKey, await stream.ReadBytesAsync(headers.PayloadLength))
                     : await stream.ReadBytesAsync(headers.PayloadLength);

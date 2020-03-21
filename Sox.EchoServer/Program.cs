@@ -18,7 +18,7 @@ namespace Sox.EchoServer
 
         private static int MessageCount;
 
-        private static object locker = new object();
+        private static readonly object locker = new object();
 
         static Program()
         {
@@ -27,18 +27,13 @@ namespace Sox.EchoServer
 
         static void Main(string[] args)
         {
-            if (args[0] == "ws")
+            if (args.Length > 0)
             {
-                _server = new WebSocketServer(
-                  ipAddress: _ipAddress,
-                  port: 80);
+                _server = CreateServer(args[0]);
             }
-            else
+            else 
             {
-                _server = new WebSocketServer(
-                  ipAddress: _ipAddress,
-                  port: 44315,
-                  x509Certificate: new X509Certificate2($"sox.pfx", "sox"));
+                _server = CreateServer();
             }
             AssemblyLoadContext.Default.Unloading += OnSigTerm;
             Console.CancelKeyPress += OnSigTerm;
@@ -107,6 +102,18 @@ namespace Sox.EchoServer
                 }
             }
         }
+
+        private static WebSocketServer CreateServer(string protocol = "ws") => protocol switch
+        {
+            "ws" => new WebSocketServer(
+                  ipAddress: _ipAddress,
+                  port: 80),
+            "wss" => new WebSocketServer(
+                  ipAddress: _ipAddress,
+                  port: 443,
+                  x509Certificate: new X509Certificate2($"sox.pfx", "sox")),
+            _ => throw new NotSupportedException($"{protocol} not supported")
+        };
 
         private static async Task StopServer()
         {

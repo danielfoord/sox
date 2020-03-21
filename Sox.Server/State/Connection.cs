@@ -10,6 +10,7 @@ using Sox.Core.Websocket.Rfc6455.Framing;
 using Sox.Core.Websocket.Rfc6455.Messaging;
 using Sox.Core.Extensions;
 using System.Threading;
+using System.Linq;
 
 namespace Sox.Server.State
 {
@@ -37,13 +38,13 @@ namespace Sox.Server.State
         private readonly Stream _stream;
 
         // Size of receive buffer.  
-        internal const int MaxFramePayloadSize = 4096;
+        internal const int MaxFrameBytes = 4096;
 
         // How long to wait between pings to this connection
-        internal const int PingIntervalMs = 20000;
+        internal const int PingIntervalMs = 60000;
 
         // Websocket frames.
-        internal List<Frame> Frames = new List<Frame>();
+        private readonly List<Frame> _frameBuffer = new List<Frame>();
 
         // Scheduled pinger
         private readonly PingTimer _pinger;
@@ -55,17 +56,21 @@ namespace Sox.Server.State
 
         private readonly SemaphoreSlim _outQueueSemaphore = new SemaphoreSlim(1);
 
+        private readonly int _maxMessageBytes;
+
         /// <summary>
         /// Contruct a connection
         /// </summary>
         /// <param name="stream">The underlying connection stream</param>
-        public Connection(Stream stream)
+        /// <param name="maxMessageBytes">The maximum amount of bytes a message can contain</param>
+        public Connection(Stream stream, int maxMessageBytes)
         {
             Id = Guid.NewGuid().ToString();
             State = ConnectionState.Connecting;
             _outQueue = new Queue<byte[]>();
             _stream = stream;
             _stream.WriteTimeout = StreamWriteTimeoutMs;
+            _maxMessageBytes = maxMessageBytes;
             _pinger = new PingTimer
             {
                 Enabled = true,
@@ -94,6 +99,22 @@ namespace Sox.Server.State
         }
 
         /// <summary>
+        /// Try append a frame to the connection's frame buffer
+        /// </summary>
+        /// <param name="frame">The frame to append</param>
+        /// <returns>true if the frame was appended sucessfully</returns>
+        public async Task<bool> TryAddFrame(Frame frame)
+        {
+            _frameBuffer.Add(frame);
+            if (frame.PayloadLength > _maxMessageBytes || _frameBuffer.Sum(f => f.PayloadLength) > _maxMessageBytes)
+            {
+                await Close(CloseStatusCode.MessageTooBig);
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
         /// Update the LastPongReceived field
         /// </summary>
         /// <param name="dateTime"></param>
@@ -113,7 +134,7 @@ namespace Sox.Server.State
             {
                 State = ConnectionState.Closing;
                 _pinger.Stop();
-                await Enqueue(Frame.CreateClose(reason));
+                await EnqueueAsync(Frame.CreateClose(reason));
                 State = ConnectionState.Closed;
             }
         }
@@ -125,9 +146,9 @@ namespace Sox.Server.State
         /// <returns>A task that resolves when the data has been sent</returns>
         public async Task Send(string data)
         {
-            (await new Message(data).Pack(MaxFramePayloadSize))
+            (await new Message(data).Pack(MaxFrameBytes))
                 .ForEach(async (frame) =>
-                    await Enqueue(frame));
+                    await EnqueueAsync(frame));
         }
 
         /// <summary>
@@ -137,9 +158,9 @@ namespace Sox.Server.State
         /// <returns>A task that resolves when the data has been sent</returns>
         public async Task Send(byte[] data)
         {
-            (await new Message(data).Pack(MaxFramePayloadSize))
+            (await new Message(data).Pack(MaxFrameBytes))
                 .ForEach(async (frame) =>
-                   await Enqueue(frame));
+                   await EnqueueAsync(frame));
         }
 
         /// <summary>
@@ -158,7 +179,7 @@ namespace Sox.Server.State
         /// <returns>A task that resolves when the frame has been sent</returns>
         public async Task Pong()
         {
-            await Enqueue(Frame.CreatePong());
+            await EnqueueAsync(Frame.CreatePong());
         }
 
         /// <summary>
@@ -181,15 +202,15 @@ namespace Sox.Server.State
 
         private async void Ping(object sender, ElapsedEventArgs elapsedEventArgs)
         {
-            await Enqueue(Frame.CreatePing());
+            await EnqueueAsync(Frame.CreatePing());
         }
 
-        private async Task Enqueue(Frame frame) 
+        private async Task EnqueueAsync(Frame frame) 
         {
-            await Enqueue(await frame.PackAsync());
+            await EnqueueAsync(await frame.PackAsync());
         }
 
-        private async Task Enqueue(byte[] frame)
+        private async Task EnqueueAsync(byte[] frame)
         {
             await _outQueueSemaphore.WaitAsync();
             _outQueue.Enqueue(frame);
@@ -212,8 +233,8 @@ namespace Sox.Server.State
 
         internal async Task<Message> UnpackMessage()
         {
-            var message = await Message.Unpack(Frames);
-            Frames.Clear();
+            var message = await Message.Unpack(_frameBuffer);
+            _frameBuffer.Clear();
             return message;
         }
     }

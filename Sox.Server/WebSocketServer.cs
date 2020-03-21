@@ -77,7 +77,12 @@ namespace Sox.Server
         /// The Maxmimum amount of bytes a frame can contain
         /// Note: A larger message can be sent by using more than one Frame
         /// </summary>
-        public readonly int MaxFramePayloadBytes;
+        public readonly int MaxFrameBytes;
+
+        /// <summary>
+        /// The Maxmimum amount of bytes a message can contain
+        /// </summary>
+        public readonly int MaxMessageBytes;
 
         /// <summary>
         /// The amount of active connections
@@ -113,17 +118,17 @@ namespace Sox.Server
         /// </summary>
         /// <param name="ipAddress">The IPAddress to bind to</param>
         /// <param name="port">The port to bind to</param>
-        /// <param name="maxFramePayloadBytes">The Maxmimum amount of bytes a frame can contain</param>
+        /// <param name="maxMessageBytes">The Maxmimum amount of bytes a message can contain</param>
         /// <param name="x509Certificate">The SSL certificate for wss</param>
         public WebSocketServer(IPAddress ipAddress,
             int port,
-            int? maxFramePayloadBytes = null,
+            int? maxMessageBytes = null,
             X509Certificate2 x509Certificate = null)
         {
             _cancellationTokenSource = new CancellationTokenSource();
             IpAddress = ipAddress;
             Port = port;
-            MaxFramePayloadBytes = maxFramePayloadBytes ?? 50.Kilobytes();
+            MaxMessageBytes = maxMessageBytes ?? 10.Megabytes();
             X509Certificate = x509Certificate;
             Protocol = X509Certificate == null ? Protocol.Ws : Protocol.Wss;
         }
@@ -236,12 +241,9 @@ namespace Sox.Server
 
         private async Task ProcessHandshake(Stream stream, HttpRequest httpRequest)
         {
-            var key = $"{httpRequest.Headers.SecWebSocketKey}{WebsocketGuid}";
-
             using var sha1 = SHA1.Create();
-
+            var key = $"{httpRequest.Headers.SecWebSocketKey}{WebsocketGuid}";
             var hash = sha1.ComputeHash(key.GetBytes());
-
             var acceptKey = Convert.ToBase64String(hash);
 
             var response = new HttpResponse
@@ -256,19 +258,13 @@ namespace Sox.Server
             };
 
             // Retrieve the socket from the state object.  
-            var connection = new Connection(stream);
-
+            var connection = new Connection(stream, MaxMessageBytes);
             // Begin sending the data to the remote device.  
             await connection.Send(response);
-
             connection.State = ConnectionState.Open;
-
             _connections[connection.Id] = connection;
-
             Interlocked.Increment(ref _connectionCount);
-
             OnConnection?.Invoke(this, new OnConnectionEventArgs(connection));
-
             await StartClientHandler(connection);
         }
 
@@ -281,9 +277,7 @@ namespace Sox.Server
                     try
                     {
                         var frame = await connection.ReadFrameAsync();
-
                         OnFrame?.Invoke(this, new OnFrameEventArgs(connection, frame));
-
                         await HandleFrame(connection, frame);
                     }
                     catch (Exception ex)
@@ -325,22 +319,24 @@ namespace Sox.Server
 
         private async Task OnDataFrame(Frame frame, Connection connection)
         {
-            connection.Frames.Add(frame);
-            if (frame.Headers.IsFinal)
+            if (await connection.TryAddFrame(frame)) 
             {
-                var message = await connection.UnpackMessage();
-
-                switch (message.Type)
+                if (frame.Headers.IsFinal)
                 {
-                    case MessageType.Binary:
-                        OnBinaryMessage?.Invoke(this, new OnBinaryMessageEventArgs(connection, message.Data));
-                        break;
-                    case MessageType.Text:
-                        OnTextMessage?.Invoke(this, new OnTextMessageEventArgs(connection, message.Data.GetString()));
-                        break;
-                    default:
-                        await CloseConnection(connection, CloseStatusCode.ProtocolError);
-                        break;
+                    var message = await connection.UnpackMessage();
+
+                    switch (message.Type)
+                    {
+                        case MessageType.Binary:
+                            OnBinaryMessage?.Invoke(this, new OnBinaryMessageEventArgs(connection, message.Data));
+                            break;
+                        case MessageType.Text:
+                            OnTextMessage?.Invoke(this, new OnTextMessageEventArgs(connection, message.Data.GetString()));
+                            break;
+                        default:
+                            await CloseConnection(connection, CloseStatusCode.ProtocolError);
+                            break;
+                    }
                 }
             }
         }

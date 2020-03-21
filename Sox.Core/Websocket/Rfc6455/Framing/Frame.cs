@@ -90,13 +90,14 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
         /// <param name="headers">The <c>FrameHeaders</c> for this <c>Frame</c></param>
         /// <param name="maskingKey">The data masking key</param>
         /// <param name="data">The frame payload</param>
-        public Frame(FrameHeaders headers, byte[] maskingKey = null, byte[] data = null)
+        public Frame(FrameHeaders headers, byte[] maskingKey, byte[] data)
         {
             Headers = headers;
             MaskingKey = maskingKey;
             Data = data ?? new byte[0];
         }
 
+        #region Factory Methods
         /// <summary>
         /// Create an initiation frame for a websocket message
         /// </summary>
@@ -105,19 +106,13 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
         /// <param name="isFinal">Flag to indicate if this is the final frame of the message</param>
         /// <param name="shouldMask">True if the frame payload should be masked</param>
         /// <returns>A <c>Frame</c> instance</returns>
-        public static Frame CreateInitiationFrame(MessageType type, byte[] payload, bool isFinal = true, bool shouldMask = true)
+        public static Frame CreateInitiationFrame(MessageType type, byte[] payload, bool isFinal = true, bool shouldMask = true) => type switch
         {
-            switch (type)
-            {
-                case MessageType.Binary:
-                    return CreateBinary(payload: payload, shouldMask: shouldMask, isFinal: isFinal);
-                case MessageType.Text:
-                    return CreateText(payload: payload.GetString(), shouldMask: shouldMask, isFinal: isFinal);
-                default:
-                    throw new Exception($"MessageType {type} is not a valid data frame type");
-            }
-        }
-        
+            MessageType.Binary => CreateBinary(payload: payload, shouldMask: shouldMask, isFinal: isFinal),
+            MessageType.Text => CreateText(payload: payload.GetString(), shouldMask: shouldMask, isFinal: isFinal),
+            _ => throw new Exception($"MessageType {type} is not a valid data frame type")
+        };
+
         /// <summary>
         /// Create a text frame
         /// </summary>
@@ -223,7 +218,9 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
             payloadLength: 2,
             shouldMask: false,
             data: BitConverter.GetBytes((short)closeCode));
+        #endregion
 
+        #region IO Methods
         /// <summary>
         ///     Read a <c>Frame</c> directly from a <c>System.IO.Stream</c>
         /// </summary>
@@ -238,17 +235,14 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
             byte[] maskingKey = null;
             byte[] data = null;
 
-            if (headers.ShouldMask)
+            if (headers.PayloadLength > 0)
             {
-                maskingKey = await stream.ReadBytesAsync(4);
-                if (headers.PayloadLength > 0)
+                if (headers.ShouldMask)
                 {
+                    maskingKey = await stream.ReadBytesAsync(4);
                     data = Xor(maskingKey, await stream.ReadBytesAsync(headers.PayloadLength));
                 }
-            }
-            else
-            {
-                if (headers.PayloadLength > 0)
+                else
                 {
                     data = await stream.ReadBytesAsync(headers.PayloadLength);
                 }
@@ -297,6 +291,7 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
 
             return stream.ToArray();
         }
+        #endregion
 
         private static byte[] Xor(IReadOnlyList<byte> maskingKey, IReadOnlyList<byte> data)
         {

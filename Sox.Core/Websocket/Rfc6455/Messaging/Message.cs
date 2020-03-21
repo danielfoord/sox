@@ -58,13 +58,11 @@ namespace Sox.Core.Websocket.Rfc6455.Messaging
             }
 
             var frameCount = GetFrameAmount(frameMaxPayloadSizeBytes);
+            using var stream = new MemoryStream(Data) { Position = 0 };
 
-            using (var stream = new MemoryStream(Data) { Position = 0 })
+            for (var i = 0; i < frameCount; i++)
             {
-                for (var i = 0; i < frameCount; i++)
-                {
-                    frames.Add(await CreateFrameFromDataStream(stream, i, frameCount, frameMaxPayloadSizeBytes, shouldMask));
-                }
+                frames.Add(await CreateFrameFromDataStream(stream, i, frameCount, frameMaxPayloadSizeBytes, shouldMask));
             }
 
             return frames;
@@ -77,16 +75,18 @@ namespace Sox.Core.Websocket.Rfc6455.Messaging
         /// <returns>The unpacked message</returns>
         public static async Task<Message> Unpack(IEnumerable<Frame> frames)
         {
-            using (var stream = new MemoryStream { Position = 0 })
+            if (frames.First().PayloadLength == 0)
             {
-                frames.ForEach(async frame => await stream.WriteBytesAsync(frame.Data));
-
-                await stream.FlushAsync();
-
-                return frames.ElementAt(0).OpCode == OpCode.Text
-                    ? new Message(stream.ToArray().GetString())
-                    : new Message(stream.ToArray());
+                return new Message(string.Empty);
             }
+
+            using var stream = new MemoryStream { Position = 0 };
+            frames.ForEach(async frame => await stream.WriteBytesAsync(frame.Data));
+            await stream.FlushAsync();
+
+            return frames.First().OpCode == OpCode.Text
+                ? new Message(stream.ToArray().GetString())
+                : new Message(stream.ToArray());
         }
 
         private int GetFrameAmount(int maxPayloadSizeBytes)

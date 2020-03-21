@@ -64,10 +64,10 @@
 
         <div class="input-group mb-3">
           <div class="input-group-prepend">
-            <button class="btn btn-secondary" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">wss://</button>
+            <button id="btnActiveProtocol" class="btn btn-secondary" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">wss://</button>
             <div class="dropdown-menu">
-              <a class="dropdown-item" href="#">ws</a>
-              <a class="dropdown-item" href="#">wss</a>
+              <a class="dropdown-item" href="#" id ="wsProtocolSelector">ws</a>
+              <a class="dropdown-item" href="#" id ="wssProtocolSelector">wss</a>
             </div>
           </div>
           <input type="text"
@@ -152,11 +152,16 @@
     const fileBox =  document.querySelector('#fileBox');
     const fileBoxText = $('.file-box__text');
     const filesTableContainer = $('#files-table-container');
+    const wsProtocolSelector = $('#wsProtocolSelector');
+    const wssProtocolSelector = $('#wssProtocolSelector');
+    const btnActiveProtocol = $('#btnActiveProtocol');
+
     let spamMessages = false;
     let spamInterval = null;
     let sockets = [];
     let files = [];
-
+    let protocol = 'wss';
+  
     $('body').on('click', '.btnDisconnect', function () {
       const index = $(this).attr('data-index');
       sockets[index].websocket.close();
@@ -194,7 +199,7 @@
 
     btnConnect.click((e) => {
       const serverUrl = txtServer.val();
-      const socket = new Socket(serverUrl);
+      const socket = new Socket(`${protocol}://${serverUrl}`);
       sockets.push(socket);
     });
 
@@ -206,7 +211,7 @@
 
     btnSendMessage.click(() => {
       sockets.forEach(socket => {
-        socket.websocket.send(txtMessage.val());
+        socket.websocket.send(txtMessage.val().trim());
       });
     });
 
@@ -221,7 +226,6 @@
       e.target.classList.add('hover');
     });
 
-    
     fileBox.addEventListener('dragleave', e => {
       e.preventDefault();
       e.target.classList.remove('hover');
@@ -236,6 +240,16 @@
       buildFilesTable(Array.from(files));
       // const data = e.dataTransfer.getData("text/plain");
       // e.target.html = data;
+    });
+
+    wsProtocolSelector.click(() => {
+      btnActiveProtocol.text('ws://');
+      protocol = 'ws';
+    });
+
+    wssProtocolSelector.click(() => {
+      btnActiveProtocol.text('wss://');
+      protocol = 'wss';
     });
 
     function debug(msg) {

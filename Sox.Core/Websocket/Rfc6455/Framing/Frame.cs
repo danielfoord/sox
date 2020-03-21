@@ -235,17 +235,17 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
             byte[] maskingKey = null;
             byte[] data = null;
 
+            if (headers.ShouldMask)
+            {
+                maskingKey = await stream.ReadBytesAsync(4);
+            }
+
             if (headers.PayloadLength > 0)
             {
-                if (headers.ShouldMask)
-                {
-                    maskingKey = await stream.ReadBytesAsync(4);
-                    data = Xor(maskingKey, await stream.ReadBytesAsync(headers.PayloadLength));
-                }
-                else
-                {
-                    data = await stream.ReadBytesAsync(headers.PayloadLength);
-                }
+
+                data = headers.ShouldMask 
+                    ? Xor(maskingKey, await stream.ReadBytesAsync(headers.PayloadLength))
+                    : await stream.ReadBytesAsync(headers.PayloadLength);
             }
 
             return new Frame(headers, maskingKey, data);

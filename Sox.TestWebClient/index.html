@@ -171,7 +171,7 @@
       const count = $('#txtConnectionAmount').val();
       for (let i = 0; i < count; i++) {
         const serverUrl = txtServer.val();
-        const socket = new Socket(serverUrl);
+        const socket = new Socket(`${protocol}://${serverUrl}`);
         sockets.push(socket);
       }
     });

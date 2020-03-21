@@ -30,11 +30,22 @@
       color: #ff4500;
     }
 
-    .image-box {
+    .file-box {
       display: flex;
-      background: grey;
+      background: #181818;
       width: 100%;
       min-height: 100px;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .file-box.hover {
+      border: 1px solid #c0c0c0;
+    }
+
+    .file-box__text {
+      display: flex;
     }
   </style>
 
@@ -42,7 +53,7 @@
 
 <body>
 
-  <div class="container-fluid">
+  <div class="container">
     <div class="row">
       <div class="col-lg-12">
 
@@ -94,18 +105,24 @@
       </div>
     </div>
 
-    <div class="col-lg-12" style="margin-top: 20px">
-      <div id="imageBox" class="image-box">
-
+    <div class="row">
+      <div class="col-lg-12" style="margin-top: 20px">
+        <div id="fileBox" class="file-box">
+          <span class="file-box__text">
+            Drop files here...
+          </span>
+          <div id="files-table-container"></div>
+        </div>
       </div>
     </div>
 
-    <div class="col-lg-12"
-      style="margin-top: 20px">
-      <h3>Connections</h3>
-      <div id="tableContainer"></div>
+    <div class="row">
+      <div class="col-lg-12"
+        style="margin-top: 20px">
+        <h3>Connections</h3>
+        <div id="tableContainer"></div>
+      </div>
     </div>
-  </div>
   </div>
 
   <script type="text/javascript"
@@ -121,11 +138,13 @@
     const tblContainer = $('#tableContainer');
     const btnSpamMessage = $('#btnSpamMessage');
     const smlMessageSize = $('#smlMessageSize');
-    const imageBox = $('#imageBox');
-
+    const fileBox =  document.querySelector('#fileBox');
+    const fileBoxText = $('.file-box__text');
+    const filesTableContainer = $('#files-table-container');
     let spamMessages = false;
     let spamInterval = null;
     let sockets = [];
+    let files = [];
 
     $('body').on('click', '.btnDisconnect', function () {
       const index = $(this).attr('data-index');
@@ -144,7 +163,10 @@
     btnSpamMessage.click((e) => {
       spamMessages = !spamMessages;
       if (spamMessages) {
-        btnSpamMessage.removeClass('btn-info').addClass('btn-warning').text('Stop Spam Message All');
+        btnSpamMessage
+          .removeClass('btn-info')
+          .addClass('btn-warning')
+          .text('Stop Spam Message All');
         spamInterval = setInterval(() => {
           sockets.forEach(socket => {
             socket.websocket.send(txtMessage.val());
@@ -152,7 +174,10 @@
         }, 50);
       } else {
         clearInterval(spamInterval);
-        btnSpamMessage.removeClass('btn-warning').addClass('btn-info').text('Spam Message All');
+        btnSpamMessage
+          .removeClass('btn-warning')
+          .addClass('btn-info')
+          .text('Spam Message All');
       }
     });
 
@@ -179,17 +204,28 @@
       smlMessageSize.text(`Message size: ${txtMessage.val().length}`);
     });
 
-    document.querySelector('#imageBox').addEventListener('dragover', e => {
+    fileBox.addEventListener('dragover', e => {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
+      e.target.classList.add('hover');
     });
 
-    document.querySelector('#imageBox').addEventListener('drop', e => {
+    
+    fileBox.addEventListener('dragleave', e => {
       e.preventDefault();
-      console.debug(e, e.dataTransfer.files, e.dataTransfer.items);
+      e.target.classList.remove('hover');
+    });
+
+    fileBox.addEventListener('drop', e => {
+      e.preventDefault();
+      e.target.classList.remove('hover');
+      const files = e.dataTransfer.files;
+      console.debug(files);
+      fileBoxText.hide();
+      buildFilesTable(Array.from(files));
       // const data = e.dataTransfer.getData("text/plain");
       // e.target.html = data;
-    })
+    });
 
     function debug(msg) {
       console.debug(msg);
@@ -197,6 +233,24 @@
 
     function warn(msg) {
       console.warn(msg);
+    }
+
+    function buildFilesTable(files) {
+      let html = '<table class="table table-sm table-borderless">';
+      html += '<tbody>';
+      html += files.map(file => {
+        console.debug(file);
+        return `
+          <tr>
+            <td>${file.name}</td>
+            <td>
+              <button class="btn btn-sm btn-primary">Send File</button>
+            </td>
+          </tr>`;
+      }).join('');
+      html += '</tbody>';
+      html += '</table>';
+      filesTableContainer.html(html);
     }
 
     function buildTable() {
@@ -214,32 +268,31 @@
           .removeClass('disconnected-indicator')
           .html(`${sockets.filter(s => s.isConnected).length} connections open`);
 
-        const html = `<table class="table table-sm table-borderless">
-                          <thead>
-                              <tr>
-                                  <th style="text-align:left">Status</th>
-                                  <th style="text-align:left">Index</th>
-                                  <th style="text-align:right">Actions</th>
-                              </tr>
-                          </thead>
-                          <tbody id="tblConnectionsBody">
-                          </tbody>
-                      </table>`;
+        const html = `
+          <table class="table table-sm table-borderless">
+              <thead>
+                <tr>
+                  <th style="text-align:left">Status</th>
+                  <th style="text-align:left">Index</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tblConnectionsBody">
+              </tbody>
+          </table>`;
         tblContainer.html(html);
 
         const body = $('#tblConnectionsBody');
+        const bodyHtml = sockets.map((socket, index) => {
+          return `
+            <tr>
+              <td class="${socket.isConnected ? 'connected-indicator' : 'disconnected-indicator'}">${socket.isConnected ? 'Connected' : 'Disconnected'}</td>
+              <td>${index}</td>
+              <td style="text-align:right" class="btnDisconnect" data-index="${index}"><button class="btn btn-sm btn-danger">Disconnect</button></td>
+            </tr>`;
+        }).join('');
 
-        let bodyhtml = '';
-
-        sockets.forEach((socket, index) => {
-          bodyhtml += `<tr>
-                        <td class="${socket.isConnected ? 'connected-indicator' : 'disconnected-indicator'}">${socket.isConnected ? 'Connected' : 'Disconnected'}</td>
-                        <td>${index}</td>
-                        <td style="text-align:right" class="btnDisconnect" data-index="${index}"><button class="btn btn-sm btn-danger">Disconnect</button></td>
-                      </tr>`;
-        });
-
-        body.html(bodyhtml);
+        body.html(bodyHtml);
       }
     }
 

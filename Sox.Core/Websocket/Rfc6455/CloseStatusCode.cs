@@ -18,6 +18,10 @@
         PolicyViolation = 1008,
         MessageTooBig = 1009,
         MissingExtensions = 1010,
-        UnexpectedError = 1011
+        UnexpectedError = 1011,
+        ServiceRestart = 1012,
+        TryAgainLater = 1013,
+        BadGateway = 1014,
+        TlsHandshakeFail = 1015
     }
 }

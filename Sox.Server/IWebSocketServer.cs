@@ -11,7 +11,7 @@ namespace Sox.Server
         /// <summary>
         /// Start the websocket server
         /// </summary>
-        void Start();
+        Task Start();
 
         /// <summary>
         /// Stop the websocket server

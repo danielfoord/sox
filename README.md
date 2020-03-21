@@ -1,10 +1,47 @@
 # Sox
-| Branch | Platform
-|---|:---:|
-| Master | ![Windows](https://github.com/danielfoord/sox/workflows/Windows/badge.svg?branch=master) |
-| Master | ![Linux](https://github.com/danielfoord/sox/workflows/Linux/badge.svg?branch=master) |
+
+![Windows](https://github.com/danielfoord/sox/workflows/Windows/badge.svg?branch=master) ![Linux](https://github.com/danielfoord/sox/workflows/Linux/badge.svg?branch=master)
 
 A pure websocket implementation for .NET Core
+
+## Simple example
+
+```
+var server = new WebSocketServer(ipAddress: _ipAddress, port: 80);
+
+server.OnConnection += (sender, eventArgs) =>
+{
+    // ...
+};
+
+server.OnDisconnection += (sender, eventArgs) =>
+{
+    // ...
+};
+
+server.OnTextMessage += async (sender, eventArgs) =>
+{
+   // ...
+};
+
+server.OnBinaryMessage += (sender, eventArgs) =>
+{
+   // ...
+};
+
+server.OnError += (sender, eventArgs) =>
+{
+    // ...
+};
+
+server.OnFrame += (sender, eventArgs) =>
+{
+    // ...
+};
+
+// Start is non-blocking
+await server.Start();
+```
 
 ## Testing on your local machine
 

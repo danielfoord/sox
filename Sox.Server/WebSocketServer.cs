@@ -142,7 +142,7 @@ namespace Sox.Server
         }
 
         /// <inhertidoc/>
-        public async void Start()
+        public async Task Start()
         {
             _server = new TcpListener(IpAddress, Port);
             _server.Start();

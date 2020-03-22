@@ -18,7 +18,7 @@ namespace Sox.Core.Http
 
         public readonly string Value;
 
-        private static IEnumerable<HttpMethod> allMethods = new List<HttpMethod>
+        private static readonly IEnumerable<HttpMethod> allMethods = new List<HttpMethod>
         {
             Options,
             Get,

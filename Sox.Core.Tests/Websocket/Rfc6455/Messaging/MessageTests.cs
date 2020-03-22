@@ -1,8 +1,8 @@
-﻿using System.Linq;
-using System.Threading.Tasks;
-using NUnit.Framework;
+﻿using NUnit.Framework;
 using Sox.Core.Websocket.Rfc6455.Framing;
 using Sox.Core.Websocket.Rfc6455.Messaging;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Sox.Core.Tests.Websocket.Rfc6455.Messaging
 {

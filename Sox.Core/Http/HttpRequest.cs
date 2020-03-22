@@ -1,10 +1,10 @@
-﻿using System;
+﻿using Sox.Core.Exceptions;
+using Sox.Core.Extensions;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Sox.Core.Exceptions;
-using Sox.Core.Extensions;
 
 namespace Sox.Core.Http
 {

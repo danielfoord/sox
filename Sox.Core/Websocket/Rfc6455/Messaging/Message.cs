@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using Sox.Core.Extensions;
+using Sox.Core.Websocket.Rfc6455.Framing;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Sox.Core.Extensions;
-using Sox.Core.Websocket.Rfc6455.Framing;
 
 namespace Sox.Core.Websocket.Rfc6455.Messaging
 {

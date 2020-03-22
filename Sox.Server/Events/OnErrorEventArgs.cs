@@ -1,5 +1,5 @@
-using System;
 using Sox.Server.State;
+using System;
 
 namespace Sox.Server.Events
 {

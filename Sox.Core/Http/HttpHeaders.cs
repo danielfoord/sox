@@ -83,7 +83,7 @@ namespace Sox.Core.Http
         public bool IsWebSocketUpgrade => Upgrade == "websocket" &&
                                           Connection.Contains("Upgrade") &&
                                           Host != null &&
-                                          SecWebSocketKey != null && 
+                                          SecWebSocketKey != null &&
                                           SecWebSocketVersion != null;
     }
 }

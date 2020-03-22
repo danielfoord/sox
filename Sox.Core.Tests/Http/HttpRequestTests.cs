@@ -1,8 +1,8 @@
 
-using System;
-using Sox.Core.Http;
 using NUnit.Framework;
 using Sox.Core.Exceptions;
+using Sox.Core.Http;
+using System;
 
 namespace Sox.Core.Tests.Http
 {

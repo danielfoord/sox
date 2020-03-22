@@ -1,5 +1,3 @@
-using System;
-
 namespace Sox.Core.Http
 {
     /// <summary>

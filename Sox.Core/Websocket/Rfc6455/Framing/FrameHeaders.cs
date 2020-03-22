@@ -1,8 +1,8 @@
 
+using Sox.Core.Extensions;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Sox.Core.Extensions;
 
 namespace Sox.Core.Websocket.Rfc6455.Framing
 {

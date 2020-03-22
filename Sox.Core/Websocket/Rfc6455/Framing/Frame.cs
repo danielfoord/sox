@@ -1,9 +1,9 @@
-﻿using System;
+﻿using Sox.Core.Extensions;
+using Sox.Core.Websocket.Rfc6455.Messaging;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Sox.Core.Extensions;
-using Sox.Core.Websocket.Rfc6455.Messaging;
 
 /*
   https://tools.ietf.org/html/rfc6455
@@ -242,7 +242,7 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
 
             if (headers.PayloadLength > 0)
             {
-                data = headers.ShouldMask 
+                data = headers.ShouldMask
                     ? Xor(maskingKey, await stream.ReadBytesAsync(headers.PayloadLength))
                     : await stream.ReadBytesAsync(headers.PayloadLength);
             }

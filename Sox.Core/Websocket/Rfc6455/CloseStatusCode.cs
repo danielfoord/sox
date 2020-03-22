@@ -1,5 +1,5 @@
 ﻿namespace Sox.Core.Websocket.Rfc6455
-{   
+{
     /// <summary>
     ///     The codes for closing a websocket connection
     /// </summary>

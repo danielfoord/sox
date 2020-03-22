@@ -1,23 +1,23 @@
-﻿using System;
-using System.IO;
-using System.Collections.Concurrent;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Threading;
-using System.Threading.Tasks;
-using Sox.Core.Extensions;
+﻿using Sox.Core.Extensions;
 using Sox.Core.Http;
 using Sox.Core.Websocket.Rfc6455;
 using Sox.Core.Websocket.Rfc6455.Framing;
 using Sox.Core.Websocket.Rfc6455.Messaging;
 using Sox.Server.Events;
 using Sox.Server.State;
-using HttpStatusCode = Sox.Core.Http.HttpStatusCode;
+using System;
+using System.Collections.Concurrent;
+using System.IO;
+using System.Linq;
+using System.Net;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Security.Authentication;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading;
+using System.Threading.Tasks;
+using HttpStatusCode = Sox.Core.Http.HttpStatusCode;
 
 namespace Sox.Server
 {
@@ -319,7 +319,7 @@ namespace Sox.Server
 
         private async Task HandleDataFrame(Frame frame, Connection connection)
         {
-            if (await connection.TryAddFrame(frame)) 
+            if (await connection.TryAddFrame(frame))
             {
                 if (frame.Headers.IsFinal)
                 {

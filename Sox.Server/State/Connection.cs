@@ -1,16 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
-using System.Timers;
-using PingTimer = System.Timers.Timer;
+﻿using Sox.Core.Extensions;
 using Sox.Core.Http;
 using Sox.Core.Websocket.Rfc6455;
 using Sox.Core.Websocket.Rfc6455.Framing;
 using Sox.Core.Websocket.Rfc6455.Messaging;
-using Sox.Core.Extensions;
-using System.Threading;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Timers;
+using PingTimer = System.Timers.Timer;
 
 namespace Sox.Server.State
 {
@@ -205,7 +205,7 @@ namespace Sox.Server.State
             await EnqueueAsync(Frame.CreatePing());
         }
 
-        private async Task EnqueueAsync(Frame frame) 
+        private async Task EnqueueAsync(Frame frame)
         {
             await EnqueueAsync(await frame.PackAsync());
         }

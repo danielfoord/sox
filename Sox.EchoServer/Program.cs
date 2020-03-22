@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Sox.Server;
+using Sox.Server.Events;
+using System;
 using System.Net;
 using System.Runtime.Loader;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
-using Sox.Server;
-using Sox.Server.Events;
 
 namespace Sox.EchoServer
 {

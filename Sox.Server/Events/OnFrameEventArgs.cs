@@ -1,6 +1,6 @@
-using System;
 using Sox.Core.Websocket.Rfc6455.Framing;
 using Sox.Server.State;
+using System;
 
 namespace Sox.Server.Events
 {

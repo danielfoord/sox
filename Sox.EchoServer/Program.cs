@@ -28,14 +28,7 @@ namespace Sox.EchoServer
 
         static void Main(string[] args)
         {
-            if (args.Length > 0)
-            {
-                _server = CreateServer(args[0]);
-            }
-            else
-            {
-                _server = CreateServer();
-            }
+            _server = args.Length > 0 ? CreateServer(args[0]) : CreateServer();
             AssemblyLoadContext.Default.Unloading += OnSigTerm;
             Console.CancelKeyPress += OnSigTerm;
             Console.WriteLine($"Sox.EchoServer exited with code: {StartServer()}");

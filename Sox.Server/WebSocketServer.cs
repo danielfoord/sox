@@ -103,6 +103,11 @@ namespace Sox.Server
         /// </summary>
         public Protocol Protocol;
 
+        /// <summary>
+        /// The period of time before a connection will timeout on read
+        /// </summary>
+        public readonly int ConnectionReadTimeoutMs = 0;
+
         private CancellationTokenSource _cancellationTokenSource;
 
         private TcpListener _server;
@@ -120,10 +125,12 @@ namespace Sox.Server
         /// <param name="port">The port to bind to</param>
         /// <param name="maxMessageBytes">The Maxmimum amount of bytes a message can contain</param>
         /// <param name="x509Certificate">The SSL certificate for wss</param>
+        /// <param name="connectionReadTimeoutMs"></param>
         public WebSocketServer(IPAddress ipAddress,
             int port,
             int? maxMessageBytes = null,
-            X509Certificate2 x509Certificate = null)
+            X509Certificate2 x509Certificate = null,
+            int connectionReadTimeoutMs = 5000)
         {
             _cancellationTokenSource = new CancellationTokenSource();
             IpAddress = ipAddress;
@@ -131,6 +138,7 @@ namespace Sox.Server
             MaxMessageBytes = maxMessageBytes ?? 10.Megabytes();
             X509Certificate = x509Certificate;
             Protocol = X509Certificate == null ? Protocol.Ws : Protocol.Wss;
+            ConnectionReadTimeoutMs = connectionReadTimeoutMs;
         }
 
         /// <summary>
@@ -214,6 +222,8 @@ namespace Sox.Server
             {
                 stream = client.GetStream();
             }
+
+            stream.ReadTimeout = ConnectionReadTimeoutMs;
 
             try
             {

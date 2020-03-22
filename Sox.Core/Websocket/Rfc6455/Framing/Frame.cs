@@ -319,9 +319,7 @@ namespace Sox.Core.Websocket.Rfc6455.Framing
         private static void EnsureBigEndian(byte[] bytes)
         {
             if (BitConverter.IsLittleEndian)
-            {
                 Array.Reverse(bytes);
-            }
         }
 
         public override string ToString()

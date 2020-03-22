@@ -64,7 +64,6 @@ namespace Sox.Core.Tests.Http
             var uri = "/";
             var majorVersion = 1;
             var minorVersion = 1;
-
             var cacheControl = "none";
             var connection = "keep-alive";
             var date = DateTime.Now.ToUniversalTime().ToShortTimeString();
@@ -98,7 +97,6 @@ namespace Sox.Core.Tests.Http
             var uri = "/";
             var majorVersion = 1;
             var minorVersion = 1;
-
             var contentType = "text/plain";
             var date = DateTime.Now.ToUniversalTime().ToShortTimeString();
 
@@ -125,13 +123,11 @@ namespace Sox.Core.Tests.Http
             var uri = "/";
             var majorVersion = 1;
             var minorVersion = 1;
-
             var cacheControl = "none";
             var connection = "keep-alive";
             var date = DateTime.Now.ToUniversalTime().ToShortTimeString();
             var pragma = "some-value";
             var trailer = "trailer";
-
 
             var raw = $"{method} {uri} HTTP/{majorVersion}.{minorVersion}\r\n" +
                 $"cache-control: {cacheControl}\r\n" +
@@ -166,7 +162,6 @@ namespace Sox.Core.Tests.Http
             var uri = "/";
             var majorVersion = 1;
             var minorVersion = 1;
-
             var contentType = "text/plain";
             var body = "Hello \nWorld";
 
@@ -198,7 +193,6 @@ namespace Sox.Core.Tests.Http
             var uri = "/";
             var majorVersion = 1;
             var minorVersion = 1;
-
             var contentLength = 12;
             var contentType = "text/plain";
 

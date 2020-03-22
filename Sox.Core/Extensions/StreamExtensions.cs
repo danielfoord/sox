@@ -15,10 +15,10 @@ namespace Sox.Core.Extensions
         /// <param name="stream">The stream to read from</param>
         /// <param name="bytesToRead">The amount of bytes to read</param>
         /// <returns>A <c>Task</c> that resolves a <c>byte[]</c> when the amount of bytes has been read</returns>
-        public static async Task<byte[]> ReadBytesAsync(this Stream stream, int bytesToRead)
+        public static async Task<byte[]> ReadBytesAsync(this Stream stream, int bytesToRead, int bufferSize = 1024)
         {
-            var buffer = new byte[bytesToRead];
-            var read = await stream.ReadAsync(buffer, 0, bytesToRead);
+            var buffer = new byte[bufferSize];
+            var read = await stream.ReadAsync(buffer, 0, bufferSize > bytesToRead ? bytesToRead : bufferSize);
 
             if (read == 0)
             {
@@ -27,10 +27,10 @@ namespace Sox.Core.Extensions
 
             if (read < bytesToRead)
             {
-                var readBuffer = await stream.ReadBytesAsync(bytesToRead - read);
+                var readBuffer = await stream.ReadBytesAsync(bytesToRead - read, bufferSize);
                 return buffer.Concat(readBuffer).ToArray();
             }
-            return buffer;
+            return buffer.Take(read).ToArray();
         }
 
         /// <summary>

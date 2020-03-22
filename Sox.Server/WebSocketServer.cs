@@ -300,16 +300,16 @@ namespace Sox.Server
                 case OpCode.Binary:
                 case OpCode.Text:
                 case OpCode.Continuation:
-                    await OnDataFrame(frame, connection);
+                    await HandleDataFrame(frame, connection);
                     break;
                 case OpCode.Close:
-                    await OnCloseFrame(connection);
+                    await HandleCloseFrame(connection);
                     break;
                 case OpCode.Ping:
-                    await OnPingFrame(connection);
+                    await HandlePingFrame(connection);
                     break;
                 case OpCode.Pong:
-                    OnPongFrame(connection);
+                    HandlePongFrame(connection);
                     break;
                 default:
                     await CloseConnection(connection, CloseStatusCode.ProtocolError);
@@ -317,7 +317,7 @@ namespace Sox.Server
             }
         }
 
-        private async Task OnDataFrame(Frame frame, Connection connection)
+        private async Task HandleDataFrame(Frame frame, Connection connection)
         {
             if (await connection.TryAddFrame(frame)) 
             {
@@ -341,7 +341,7 @@ namespace Sox.Server
             }
         }
 
-        private async Task OnCloseFrame(Connection connection)
+        private async Task HandleCloseFrame(Connection connection)
         {
             if (!_cancellationTokenSource.IsCancellationRequested)
             {
@@ -349,12 +349,12 @@ namespace Sox.Server
             }
         }
 
-        private static async Task OnPingFrame(Connection connection)
+        private static async Task HandlePingFrame(Connection connection)
         {
             await connection.Pong();
         }
 
-        private static void OnPongFrame(Connection connection)
+        private static void HandlePongFrame(Connection connection)
         {
             connection.UpdateLastPong(DateTime.Now);
         }

@@ -236,7 +236,7 @@ namespace Sox.Server
                     }
                     else
                     {
-                        // TODO: Not websocket request, return HTTP response
+                        // TODO: Not websocket request, return HTTP response (https://github.com/danielfoord/sox/issues/6)
                     }
                 }
 

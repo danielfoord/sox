@@ -110,7 +110,7 @@ namespace Sox.Http
             //         Content - Length := length
             //    Remove "chunked" from Transfer-Encoding
 
-            // TODO: Read chunked body
+            // TODO: https://github.com/danielfoord/sox/issues/7
 
             return httpRequest;
         }

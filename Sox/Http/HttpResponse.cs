@@ -46,15 +46,15 @@ namespace Sox.Http
                 var majorVersion = version.Split('.')[0];
                 var minorVersion = version.Split('.')[1];
 
-                // TODO: Finish implementation
+                // TODO: Finish implementation (https://github.com/danielfoord/sox/issues/8)
                 spaceIndex = statusLine.IndexOf(' ', spaceIndex + 1);
                 var statusCode = statusLine.Substring(spaceIndex, statusLine.IndexOf(' ', spaceIndex + 1));
 
                 response = new HttpResponse
                 {
                     //StatusCode = new HttpStatusCode(method),
-                    MajorVersion = Int32.Parse(majorVersion),
-                    MinorVersion = Int32.Parse(minorVersion)
+                    MajorVersion = int.Parse(majorVersion),
+                    MinorVersion = int.Parse(minorVersion)
                 };
 
                 var headers = lines.Skip(1);

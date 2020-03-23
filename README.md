@@ -6,7 +6,7 @@ A pure websocket implementation for .NET Core
 
 ## Simple example
 
-```
+```csharp
 var server = new WebSocketServer(ipAddress: _ipAddress, port: 80);
 
 server.OnConnection += (sender, eventArgs) =>

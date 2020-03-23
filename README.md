@@ -1,10 +1,47 @@
 # Sox
-| Branch | Pipeline
-|---|:---:|
-| Master |![.NET Core](https://github.com/danielfoord/sox/workflows/.NET%20Core/badge.svg?branch=master) |
-| Develop | [![pipeline status](https://gitlab.com/danielfoord/sox/badges/develop/pipeline.svg)](https://gitlab.com/danielfoord/sox/commits/develop)|
+
+![Windows](https://github.com/danielfoord/sox/workflows/Windows/badge.svg?branch=master) ![Linux](https://github.com/danielfoord/sox/workflows/Linux/badge.svg?branch=master)
 
 A pure websocket implementation for .NET Core
+
+## Simple example
+
+```
+var server = new WebSocketServer(ipAddress: _ipAddress, port: 80);
+
+server.OnConnection += (sender, eventArgs) =>
+{
+    // ...
+};
+
+server.OnDisconnection += (sender, eventArgs) =>
+{
+    // ...
+};
+
+server.OnTextMessage += async (sender, eventArgs) =>
+{
+   // ...
+};
+
+server.OnBinaryMessage += (sender, eventArgs) =>
+{
+   // ...
+};
+
+server.OnError += (sender, eventArgs) =>
+{
+    // ...
+};
+
+server.OnFrame += (sender, eventArgs) =>
+{
+    // ...
+};
+
+// Start is non-blocking
+await server.Start();
+```
 
 ## Testing on your local machine
 
@@ -80,6 +117,10 @@ Create a signed certificate with your key:
 openssl pkcs12 -export -out sox.pfx -inkey localhost.key -in localhost.crt
 ```
 
-If the above is still not working, add rootCA.pem to the CA's in your browser.
+Add rootCA.pem to the CA's in your browser.
+
+`dotnet dev-certs https -ep "sox.pfx" -p "sox" --trust`
+
+
 
 

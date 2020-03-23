@@ -29,13 +29,31 @@
     .disconnected-indicator {
       color: #ff4500;
     }
+
+    .file-box {
+      display: flex;
+      background: #181818;
+      width: 100%;
+      min-height: 100px;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .file-box.hover {
+      border: 1px solid #c0c0c0;
+    }
+
+    .file-box__text {
+      display: flex;
+    }
   </style>
 
 </head>
 
 <body>
 
-  <div class="container-fluid">
+  <div class="container">
     <div class="row">
       <div class="col-lg-12">
 
@@ -45,9 +63,16 @@
         </h1>
 
         <div class="input-group mb-3">
+          <div class="input-group-prepend">
+            <button id="btnActiveProtocol" class="btn btn-secondary" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">wss://</button>
+            <div class="dropdown-menu">
+              <a class="dropdown-item" href="#" id ="wsProtocolSelector">ws</a>
+              <a class="dropdown-item" href="#" id ="wssProtocolSelector">wss</a>
+            </div>
+          </div>
           <input type="text"
             id="txtServer"
-            value="wss://localhost:44315"
+            value="localhost"
             class="form-control" />
           <div class="input-group-append">
             <button type="button"
@@ -86,16 +111,33 @@
         <small id="smlMessageSize">Message Size: 0</small>
       </div>
     </div>
-    <div class="col-lg-12"
-      style="margin-top: 20px">
-      <h3>Connections</h3>
-      <div id="tableContainer"></div>
+
+    <div class="row">
+      <div class="col-lg-12" style="margin-top: 20px">
+        <div id="fileBox" class="file-box">
+          <span class="file-box__text">
+            Drop files here...
+          </span>
+          <div id="files-table-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12"
+        style="margin-top: 20px">
+        <h3>Connections</h3>
+        <div id="tableContainer"></div>
+      </div>
     </div>
   </div>
-  </div>
 
-  <script type="text/javascript"
-    src="node_modules/jquery/dist/jquery.js"></script>
+  <!-- <script type="text/javascript"
+    src="node_modules/jquery/dist/jquery.js"></script> -->
+  <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+
   <script type="text/javascript">
 
     const txtServer = $('#txtServer');
@@ -107,11 +149,19 @@
     const tblContainer = $('#tableContainer');
     const btnSpamMessage = $('#btnSpamMessage');
     const smlMessageSize = $('#smlMessageSize');
+    const fileBox =  document.querySelector('#fileBox');
+    const fileBoxText = $('.file-box__text');
+    const filesTableContainer = $('#files-table-container');
+    const wsProtocolSelector = $('#wsProtocolSelector');
+    const wssProtocolSelector = $('#wssProtocolSelector');
+    const btnActiveProtocol = $('#btnActiveProtocol');
 
     let spamMessages = false;
     let spamInterval = null;
     let sockets = [];
-
+    let files = [];
+    let protocol = 'wss';
+  
     $('body').on('click', '.btnDisconnect', function () {
       const index = $(this).attr('data-index');
       sockets[index].websocket.close();
@@ -121,7 +171,7 @@
       const count = $('#txtConnectionAmount').val();
       for (let i = 0; i < count; i++) {
         const serverUrl = txtServer.val();
-        const socket = new Socket(serverUrl);
+        const socket = new Socket(`${protocol}://${serverUrl}`);
         sockets.push(socket);
       }
     });
@@ -129,7 +179,10 @@
     btnSpamMessage.click((e) => {
       spamMessages = !spamMessages;
       if (spamMessages) {
-        btnSpamMessage.removeClass('btn-info').addClass('btn-warning').text('Stop Spam Message All');
+        btnSpamMessage
+          .removeClass('btn-info')
+          .addClass('btn-warning')
+          .text('Stop Spam Message All');
         spamInterval = setInterval(() => {
           sockets.forEach(socket => {
             socket.websocket.send(txtMessage.val());
@@ -137,13 +190,16 @@
         }, 50);
       } else {
         clearInterval(spamInterval);
-        btnSpamMessage.removeClass('btn-warning').addClass('btn-info').text('Spam Message All');
+        btnSpamMessage
+          .removeClass('btn-warning')
+          .addClass('btn-info')
+          .text('Spam Message All');
       }
     });
 
     btnConnect.click((e) => {
       const serverUrl = txtServer.val();
-      const socket = new Socket(serverUrl);
+      const socket = new Socket(`${protocol}://${serverUrl}`);
       sockets.push(socket);
     });
 
@@ -155,7 +211,7 @@
 
     btnSendMessage.click(() => {
       sockets.forEach(socket => {
-        socket.websocket.send(txtMessage.val());
+        socket.websocket.send(txtMessage.val().trim());
       });
     });
 
@@ -164,12 +220,62 @@
       smlMessageSize.text(`Message size: ${txtMessage.val().length}`);
     });
 
+    fileBox.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      e.target.classList.add('hover');
+    });
+
+    fileBox.addEventListener('dragleave', e => {
+      e.preventDefault();
+      e.target.classList.remove('hover');
+    });
+
+    fileBox.addEventListener('drop', e => {
+      e.preventDefault();
+      e.target.classList.remove('hover');
+      const files = e.dataTransfer.files;
+      console.debug(files);
+      fileBoxText.hide();
+      buildFilesTable(Array.from(files));
+      // const data = e.dataTransfer.getData("text/plain");
+      // e.target.html = data;
+    });
+
+    wsProtocolSelector.click(() => {
+      btnActiveProtocol.text('ws://');
+      protocol = 'ws';
+    });
+
+    wssProtocolSelector.click(() => {
+      btnActiveProtocol.text('wss://');
+      protocol = 'wss';
+    });
+
     function debug(msg) {
       console.debug(msg);
     }
 
     function warn(msg) {
       console.warn(msg);
+    }
+
+    function buildFilesTable(files) {
+      let html = '<table class="table table-sm table-borderless">';
+      html += '<tbody>';
+      html += files.map(file => {
+        console.debug(file);
+        return `
+          <tr>
+            <td>${file.name}</td>
+            <td>
+              <button class="btn btn-sm btn-primary">Send File</button>
+            </td>
+          </tr>`;
+      }).join('');
+      html += '</tbody>';
+      html += '</table>';
+      filesTableContainer.html(html);
     }
 
     function buildTable() {
@@ -187,32 +293,31 @@
           .removeClass('disconnected-indicator')
           .html(`${sockets.filter(s => s.isConnected).length} connections open`);
 
-        const html = `<table class="table table-sm table-borderless">
-                          <thead>
-                              <tr>
-                                  <th style="text-align:left">Status</th>
-                                  <th style="text-align:left">Index</th>
-                                  <th style="text-align:right">Actions</th>
-                              </tr>
-                          </thead>
-                          <tbody id="tblConnectionsBody">
-                          </tbody>
-                      </table>`;
+        const html = `
+          <table class="table table-sm table-borderless">
+              <thead>
+                <tr>
+                  <th style="text-align:left">Status</th>
+                  <th style="text-align:left">Index</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tblConnectionsBody">
+              </tbody>
+          </table>`;
         tblContainer.html(html);
 
         const body = $('#tblConnectionsBody');
+        const bodyHtml = sockets.map((socket, index) => {
+          return `
+            <tr>
+              <td class="${socket.isConnected ? 'connected-indicator' : 'disconnected-indicator'}">${socket.isConnected ? 'Connected' : 'Disconnected'}</td>
+              <td>${index}</td>
+              <td style="text-align:right" class="btnDisconnect" data-index="${index}"><button class="btn btn-sm btn-danger">Disconnect</button></td>
+            </tr>`;
+        }).join('');
 
-        let bodyhtml = '';
-
-        sockets.forEach((socket, index) => {
-          bodyhtml += `<tr>
-                        <td class="${socket.isConnected ? 'connected-indicator' : 'disconnected-indicator'}">${socket.isConnected ? 'Connected' : 'Disconnected'}</td>
-                        <td>${index}</td>
-                        <td style="text-align:right" class="btnDisconnect" data-index="${index}"><button class="btn btn-sm btn-danger">Disconnect</button></td>
-                      </tr>`;
-        });
-
-        body.html(bodyhtml);
+        body.html(bodyHtml);
       }
     }
 

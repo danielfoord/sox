@@ -3,11 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29911.84
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.Core", "Sox.Core\Sox.Core.csproj", "{B40AFD56-90B0-430D-B49B-9DC432CB891A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox", "Sox\Sox.csproj", "{B40AFD56-90B0-430D-B49B-9DC432CB891A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.Core.Tests", "Sox.Core.Tests\Sox.Core.Tests.csproj", "{3DD5942A-DFFD-4908-AD8C-8A4690235C08}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.Server", "Sox.Server\Sox.Server.csproj", "{84E01474-FC1B-47F1-8D4D-812CCC313F36}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.Tests", "Sox.Tests\Sox.Tests.csproj", "{3DD5942A-DFFD-4908-AD8C-8A4690235C08}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.EchoServer", "Sox.EchoServer\Sox.EchoServer.csproj", "{796D7745-BC63-4756-BCA6-D11D3A9F845B}"
 EndProject
@@ -31,10 +29,6 @@ Global
 		{3DD5942A-DFFD-4908-AD8C-8A4690235C08}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3DD5942A-DFFD-4908-AD8C-8A4690235C08}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3DD5942A-DFFD-4908-AD8C-8A4690235C08}.Release|Any CPU.Build.0 = Release|Any CPU
-		{84E01474-FC1B-47F1-8D4D-812CCC313F36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{84E01474-FC1B-47F1-8D4D-812CCC313F36}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{84E01474-FC1B-47F1-8D4D-812CCC313F36}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{84E01474-FC1B-47F1-8D4D-812CCC313F36}.Release|Any CPU.Build.0 = Release|Any CPU
 		{796D7745-BC63-4756-BCA6-D11D3A9F845B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{796D7745-BC63-4756-BCA6-D11D3A9F845B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{796D7745-BC63-4756-BCA6-D11D3A9F845B}.Release|Any CPU.ActiveCfg = Release|Any CPU

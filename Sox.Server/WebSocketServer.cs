@@ -295,7 +295,7 @@ namespace Sox.Server
                         if (!_cancellationTokenSource.IsCancellationRequested)
                         {
                             OnError?.Invoke(this, new OnErrorEventArgs(connection, ex));
-                            await connection.Close(CloseStatusCode.ProtocolError);
+                            await CloseConnection(connection, CloseStatusCode.ProtocolError);
                         }
                     }
                 }

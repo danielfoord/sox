@@ -48,13 +48,11 @@ namespace Sox.Core.Websocket.Rfc6455.Messaging
         /// <param name="frameMaxPayloadSizeBytes">The max payload size in bytes per frame</param>
         /// <param name="shouldMask">Should the frame be masked</param>
         /// <returns>The message split into it's frames</returns>
-        public async Task<IEnumerable<byte[]>> Pack(int frameMaxPayloadSizeBytes, bool shouldMask = false)
+        public async IAsyncEnumerable<byte[]> Pack(int frameMaxPayloadSizeBytes, bool shouldMask = false)
         {
-            var frames = new List<byte[]>();
-
             if (Data == null)
             {
-                return frames;
+                yield break;
             }
 
             var frameCount = GetFrameAmount(frameMaxPayloadSizeBytes);
@@ -62,10 +60,8 @@ namespace Sox.Core.Websocket.Rfc6455.Messaging
 
             for (var i = 0; i < frameCount; i++)
             {
-                frames.Add(await CreateFrameFromDataStream(stream, i, frameCount, frameMaxPayloadSizeBytes, shouldMask));
+                yield return await CreateFrameFromDataStream(stream, i, frameCount, frameMaxPayloadSizeBytes, shouldMask);
             }
-
-            return frames;
         }
 
         /// <summary>

@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+using Sox.Core.Extensions;
 using Sox.Core.Websocket.Rfc6455.Framing;
 using Sox.Core.Websocket.Rfc6455.Messaging;
 using System.Linq;
@@ -19,7 +20,7 @@ namespace Sox.Core.Tests.Websocket.Rfc6455.Messaging
             var message = new Message(new byte[11]);
 
             // Act
-            var frames = await message.Pack(maxFramePayloadBytes);
+            var frames = await message.Pack(maxFramePayloadBytes).AsEnumerable();
 
             // Assert
             Assert.AreEqual(expectedFrameCount, frames.Count());
@@ -35,7 +36,7 @@ namespace Sox.Core.Tests.Websocket.Rfc6455.Messaging
             var message = new Message("Hello World");
 
             // Act
-            var frames = (await message.Pack(3))
+            var frames = (await message.Pack(3).AsEnumerable())
                 .Select(bytes => Frame.UnpackAsync(bytes).Result)
                 .ToArray();
 
@@ -55,7 +56,7 @@ namespace Sox.Core.Tests.Websocket.Rfc6455.Messaging
             var message = new Message((string)null);
 
             // Act
-            var frames = await message.Pack(1);
+            var frames = await message.Pack(1).AsEnumerable();
 
             // Assert
             Assert.AreEqual(0, frames.Count());
@@ -70,7 +71,7 @@ namespace Sox.Core.Tests.Websocket.Rfc6455.Messaging
             var message = new Message(payload);
 
             // Act
-            var frames = (await message.Pack(16)).Select(bytes => Frame.UnpackAsync(bytes).Result).ToArray();
+            var frames = (await message.Pack(16).AsEnumerable()).Select(bytes => Frame.UnpackAsync(bytes).Result).ToArray();
             var unpacked = await Message.Unpack(frames);
 
             // Assert

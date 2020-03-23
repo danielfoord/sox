@@ -146,9 +146,10 @@ namespace Sox.Server.State
         /// <returns>A task that resolves when the data has been sent</returns>
         public async Task Send(string data)
         {
-            (await new Message(data).Pack(MaxFrameBytes))
-                .ForEach(async (frame) =>
-                    await EnqueueAsync(frame));
+            await foreach (var frame in new Message(data).Pack(MaxFrameBytes)) 
+            {
+                await EnqueueAsync(frame);
+            }
         }
 
         /// <summary>
@@ -158,9 +159,10 @@ namespace Sox.Server.State
         /// <returns>A task that resolves when the data has been sent</returns>
         public async Task Send(byte[] data)
         {
-            (await new Message(data).Pack(MaxFrameBytes))
-                .ForEach(async (frame) =>
-                   await EnqueueAsync(frame));
+            await foreach (var frame in new Message(data).Pack(MaxFrameBytes))
+            {
+                await EnqueueAsync(frame);
+            }
         }
 
         /// <summary>
@@ -202,7 +204,14 @@ namespace Sox.Server.State
 
         private async void Ping(object sender, ElapsedEventArgs elapsedEventArgs)
         {
-            await EnqueueAsync(Frame.CreatePing());
+            try
+            {
+                await EnqueueAsync(Frame.CreatePing());
+            }
+            catch (IOException)
+            {
+                Dispose();
+            }
         }
 
         private async Task EnqueueAsync(Frame frame)

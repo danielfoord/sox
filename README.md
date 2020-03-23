@@ -4,6 +4,8 @@
 
 A pure websocket implementation for .NET Core
 
+THIS IS A WORK IN PROGRESS. DO NOT USE IN PRODUCTION.
+
 ## Simple example
 
 ```csharp

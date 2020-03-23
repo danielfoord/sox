@@ -1,10 +1,10 @@
 ﻿using NUnit.Framework;
+using Sox.Websocket.Rfc6455;
+using Sox.Websocket.Rfc6455.Framing;
 using System;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Sox.Websocket.Rfc6455;
-using Sox.Websocket.Rfc6455.Framing;
 
 namespace Sox.Tests.Websocket.Rfc6455.Frames
 {

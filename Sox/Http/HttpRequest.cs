@@ -1,5 +1,5 @@
-﻿using Sox.Extensions;
-using Sox.Exceptions;
+﻿using Sox.Exceptions;
+using Sox.Extensions;
 using System;
 using System.IO;
 using System.Linq;

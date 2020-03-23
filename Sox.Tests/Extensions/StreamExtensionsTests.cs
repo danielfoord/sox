@@ -1,8 +1,8 @@
 ﻿using NUnit.Framework;
+using Sox.Extensions;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Sox.Extensions;
 
 namespace Sox.Tests.Extensions
 {

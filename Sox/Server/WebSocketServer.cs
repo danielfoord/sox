@@ -1,10 +1,10 @@
 ﻿using Sox.Extensions;
 using Sox.Http;
+using Sox.Server.Events;
+using Sox.Server.State;
 using Sox.Websocket.Rfc6455;
 using Sox.Websocket.Rfc6455.Framing;
 using Sox.Websocket.Rfc6455.Messaging;
-using Sox.Server.Events;
-using Sox.Server.State;
 using System;
 using System.Collections.Concurrent;
 using System.IO;

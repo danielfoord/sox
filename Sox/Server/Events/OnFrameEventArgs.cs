@@ -1,5 +1,5 @@
-using Sox.Websocket.Rfc6455.Framing;
 using Sox.Server.State;
+using Sox.Websocket.Rfc6455.Framing;
 using System;
 
 namespace Sox.Server.Events

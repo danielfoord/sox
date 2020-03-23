@@ -5,10 +5,6 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Sox.Server\Sox.Server.csproj" />
-  </ItemGroup>
-
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <None Update="sox.pfx" CopyToOutputDirectory="Always" />
   </ItemGroup>
@@ -23,6 +19,10 @@
 
   <ItemGroup>
     <None Remove="publish\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sox\Sox.csproj" />
   </ItemGroup>
 
 </Project>

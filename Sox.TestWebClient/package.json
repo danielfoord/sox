@@ -4,7 +4,7 @@
   "description": "Sockd.TestWebClient",
   "main": "server.js",
   "scripts": {
-	"start": "node server"
+    "start": "node server"
   },
   "author": {
     "name": "Daniel"

@@ -305,6 +305,14 @@ namespace Sox.Server
 
         private async Task HandleFrame(Connection connection, Frame frame)
         {
+            // Close connection if not masked 
+            // See: https://tools.ietf.org/html/rfc6455#section-5.1
+            if (!frame.Headers.ShouldMask)
+            {
+                await CloseConnection(connection, CloseStatusCode.ProtocolError);
+                return;
+            }
+
             switch (frame.OpCode)
             {
                 case OpCode.Binary:

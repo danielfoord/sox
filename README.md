@@ -74,12 +74,6 @@ Generate your root CA SSL certificate:
 
 `openssl req -x509 -new -nodes -key rootCA.key -sha256 -days 1024 -out rootCA.pem`
 
-`sudo mkdir /usr/local/share/ca-certificates/extra`
-
-`sudo cp rootCA.pem /usr/local/share/ca-certificates/extra/rootCA.crt`
-
-`sudo update-ca-certificates` or `sudo dpkg-reconfigure ca-certificates`
-
 Create a private key:
 
 ```
@@ -113,15 +107,11 @@ openssl x509 \
  -extfile v3.ext
 ```
 
-
 Create a signed certificate with your key:
 ```
 openssl pkcs12 -export -out sox.pfx -inkey localhost.key -in localhost.crt
 ```
 
-Add rootCA.pem to the CA's in your browser.
-
-`dotnet dev-certs https -ep "sox.pfx" -p "sox" --trust`
 
 
 

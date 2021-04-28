@@ -65,7 +65,6 @@ namespace Sox.Server.State
         {
             Id = Guid.NewGuid().ToString();
             State = ConnectionState.Connecting;
-            //_outQueue = new Queue<byte[]>();
             _channel = Channel.CreateUnbounded<byte[]>();
             _stream = stream;
             _stream.WriteTimeout = StreamWriteTimeoutMs;

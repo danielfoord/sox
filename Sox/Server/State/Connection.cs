@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Timers;
 using PingTimer = System.Timers.Timer;
@@ -52,9 +52,7 @@ namespace Sox.Server.State
         // How long shoud we wait for a stream write before timing out
         private readonly int StreamWriteTimeoutMs = 2000;
 
-        private readonly Queue<byte[]> _outQueue;
-
-        private readonly SemaphoreSlim _outQueueSemaphore = new SemaphoreSlim(1);
+        private readonly Channel<byte[]> _channel;
 
         private readonly int _maxMessageBytes;
 
@@ -67,7 +65,7 @@ namespace Sox.Server.State
         {
             Id = Guid.NewGuid().ToString();
             State = ConnectionState.Connecting;
-            _outQueue = new Queue<byte[]>();
+            _channel = Channel.CreateUnbounded<byte[]>();
             _stream = stream;
             _stream.WriteTimeout = StreamWriteTimeoutMs;
             _maxMessageBytes = maxMessageBytes;
@@ -221,9 +219,8 @@ namespace Sox.Server.State
 
         private async Task EnqueueAsync(byte[] frame)
         {
-            await _outQueueSemaphore.WaitAsync();
-            _outQueue.Enqueue(frame);
-            if (_outQueue.Count == 1)
+            await _channel.Writer.WriteAsync(frame);
+            if (_channel.Reader.Count == 1)
             {
                 await DequeueAsync();
             }
@@ -231,13 +228,12 @@ namespace Sox.Server.State
 
         private async Task DequeueAsync()
         {
-            var frame = _outQueue.Dequeue();
+            var frame = await _channel.Reader.ReadAsync();
             await _stream.WriteAndFlushAsync(frame);
-            if (_outQueue.Count > 0)
+            if (_channel.Reader.Count > 0) 
             {
                 await DequeueAsync();
             }
-            _outQueueSemaphore.Release();
         }
 
         internal async Task<Message> UnpackMessage()

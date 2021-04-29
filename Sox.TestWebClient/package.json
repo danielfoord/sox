@@ -4,12 +4,15 @@
   "description": "Sockd.TestWebClient",
   "main": "server.js",
   "scripts": {
-    "start": "node server"
+    "start": "http-server"
   },
   "author": {
     "name": "Daniel"
   },
   "dependencies": {
     "jquery": "^3.5.0"
+  },
+  "devDependencies": {
+    "http-server": "^0.12.3"
   }
 }

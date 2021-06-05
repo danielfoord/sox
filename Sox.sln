@@ -11,11 +11,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.EchoServer", "Sox.EchoS
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{06ED0324-C795-4741-899E-A9B496E9C207}"
 	ProjectSection(SolutionItems) = preProject
+		create_https_cert.ps1 = create_https_cert.ps1
 		run-echo-server.sh = run-echo-server.sh
 		test.sh = test.sh
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sox.Benchmarks", "Sox.Benchmarks\Sox.Benchmarks.csproj", "{943321EA-9B61-49E8-842C-EAF780776E87}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.Benchmarks", "Sox.Benchmarks\Sox.Benchmarks.csproj", "{943321EA-9B61-49E8-842C-EAF780776E87}"
 	ProjectSection(ProjectDependencies) = postProject
 		{B40AFD56-90B0-430D-B49B-9DC432CB891A} = {B40AFD56-90B0-430D-B49B-9DC432CB891A}
 	EndProjectSection

@@ -212,8 +212,7 @@ namespace Sox.Server
             if (X509Certificate != null)
             {
                 stream = new SslStream(client.GetStream());
-                var secureStream = stream as SslStream;
-                await secureStream.AuthenticateAsServerAsync(X509Certificate,
+                await ((SslStream)stream).AuthenticateAsServerAsync(X509Certificate,
                     clientCertificateRequired: false,
                     enabledSslProtocols: SslProtocols.Tls12,
                     checkCertificateRevocation: true);
@@ -239,7 +238,6 @@ namespace Sox.Server
                         // TODO: Not websocket request, return HTTP response (https://github.com/danielfoord/sox/issues/6)
                     }
                 }
-
             }
             catch (Exception ex)
             {

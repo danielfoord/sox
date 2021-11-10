@@ -267,3 +267,5 @@ __pycache__/
 coverage
 coverage.json
 coverage.opencover.xml
+
+.DS_Store

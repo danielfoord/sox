@@ -16,11 +16,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{06ED
 		test.sh = test.sh
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sox.Benchmarks", "Sox.Benchmarks\Sox.Benchmarks.csproj", "{943321EA-9B61-49E8-842C-EAF780776E87}"
-	ProjectSection(ProjectDependencies) = postProject
-		{B40AFD56-90B0-430D-B49B-9DC432CB891A} = {B40AFD56-90B0-430D-B49B-9DC432CB891A}
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,10 +34,6 @@ Global
 		{796D7745-BC63-4756-BCA6-D11D3A9F845B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{796D7745-BC63-4756-BCA6-D11D3A9F845B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{796D7745-BC63-4756-BCA6-D11D3A9F845B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{943321EA-9B61-49E8-842C-EAF780776E87}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{943321EA-9B61-49E8-842C-EAF780776E87}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{943321EA-9B61-49E8-842C-EAF780776E87}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{943321EA-9B61-49E8-842C-EAF780776E87}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

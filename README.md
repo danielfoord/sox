@@ -111,6 +111,25 @@ Create a signed certificate with your key:
 ```
 openssl pkcs12 -export -out sox.pfx -inkey localhost.key -in localhost.crt
 ```
+## Reverse proxy on Nginx
+Add the following to `/usr/local/etc/nginx/nginx.conf`
+```
+location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_pass http://localhost:8080;
+}
+```
+```
+location /socket {
+    proxy_pass http://localhost:8888;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "Upgrade";
+    proxy_set_header Host $host;
+}
+```
+
 
 
 

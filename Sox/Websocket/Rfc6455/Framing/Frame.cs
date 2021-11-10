@@ -110,7 +110,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         {
             MessageType.Binary => CreateBinary(payload: payload, shouldMask: shouldMask, isFinal: isFinal),
             MessageType.Text => CreateText(payload: payload.GetString(), shouldMask: shouldMask, isFinal: isFinal),
-            _ => throw new Exception($"MessageType {type} is not a valid data frame type")
+            _ => throw new ($"MessageType {type} is not a valid data frame type")
         };
 
         /// <summary>
@@ -122,7 +122,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <returns>An instance of a Frame</returns>
         internal static Frame CreateText(string payload,
             bool shouldMask = false,
-            bool isFinal = true) => new Frame(
+            bool isFinal = true) => new(
             isFinal: isFinal,
             rsv1: false,
             rsv2: false,
@@ -140,7 +140,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <returns>A Binary Websocket Frame</returns>
         internal static Frame CreateBinary(byte[] payload,
             bool shouldMask = false,
-            bool isFinal = true) => new Frame(
+            bool isFinal = true) => new(
             isFinal: isFinal,
             rsv1: false,
             rsv2: false,
@@ -158,7 +158,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <returns>A Binary Websocket Frame</returns>
         internal static Frame CreateContinuation(byte[] payload,
             bool shouldMask = false,
-            bool isFinal = false) => new Frame(
+            bool isFinal = false) => new(
             isFinal: isFinal,
             rsv1: false,
             rsv2: false,
@@ -173,7 +173,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         ///     Create a ping frame
         /// </summary>
         /// <returns>A Ping Websocket Frame</returns>
-        internal static Frame CreatePing() => new Frame(
+        internal static Frame CreatePing() => new(
             isFinal: true,
             rsv1: false,
             rsv2: false,
@@ -185,7 +185,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         ///     Create a pong frame
         /// </summary>
         /// <returns>A Ping Websocket Frame</returns>
-        internal static Frame CreatePong() => new Frame(
+        internal static Frame CreatePong() => new(
             isFinal: true,
             rsv1: false,
             rsv2: false,
@@ -197,7 +197,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         ///     Create a close frame
         /// </summary>
         /// <returns>A Ping Websocket Frame</returns>
-        internal static Frame CreateClose() => new Frame(
+        internal static Frame CreateClose() => new(
             isFinal: true,
             rsv1: false,
             rsv2: false,
@@ -209,7 +209,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         ///     Create a close frame
         /// </summary>
         /// <returns>A Ping Websocket Frame</returns>
-        internal static Frame CreateClose(CloseStatusCode closeCode) => new Frame(
+        internal static Frame CreateClose(CloseStatusCode closeCode) => new(
             isFinal: true,
             rsv1: false,
             rsv2: false,
@@ -257,7 +257,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <returns>A WebSocket message frame</returns>
         internal static async Task<Frame> UnpackAsync(byte[] bytes)
         {
-            using var stream = new MemoryStream(bytes);
+            using MemoryStream stream = new(bytes);
             return await UnpackAsync(stream);
         }
 
@@ -305,7 +305,7 @@ namespace Sox.Websocket.Rfc6455.Framing
 
         private static byte[] CreateMaskingKey()
         {
-            var random = new Random();
+            Random random = new();
             var maskingKey = new byte[4];
 
             for (var i = 0; i < 4; i++)

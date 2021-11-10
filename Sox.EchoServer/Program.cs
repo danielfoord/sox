@@ -15,11 +15,11 @@ namespace Sox.EchoServer
 
         private static readonly ManualResetEventSlim _serverWaitHandle;
 
-        private static readonly IPAddress _ipAddress = IPAddress.Loopback;
+        private static readonly IPAddress _ipAddress = IPAddress.Parse("127.0.0.1");
 
         private static int MessageCount;
 
-        private static readonly object locker = new object();
+        private static readonly object locker = new();
 
         static Program()
         {

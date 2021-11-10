@@ -65,7 +65,7 @@ namespace Sox.EchoServer
         {
             "ws" => new WebSocketServer(
                   ipAddress: _ipAddress,
-                  port: 80),
+                  port: 8888),
             "wss" => new WebSocketServer(
                   ipAddress: _ipAddress,
                   port: 443,

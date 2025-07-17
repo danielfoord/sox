@@ -121,7 +121,7 @@ namespace Sox.EchoServer
 
         private static void OnFrame(object sender, OnFrameEventArgs eventArgs)
         {
-            Console.WriteLine($"CID: {eventArgs.Connection.Id} | Received Frame ({eventArgs.Frame.OpCode}) | : Plength - {eventArgs.Frame.PayloadLength:N0}");
+            // Console.WriteLine($"CID: {eventArgs.Connection.Id} | Received Frame ({eventArgs.Frame.OpCode}) | : Plength - {eventArgs.Frame.PayloadLength:N0}");
         }
     }
 }

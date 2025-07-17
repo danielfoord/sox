@@ -1,4 +1,4 @@
-﻿using Sox.Extensions;
+using Sox.Extensions;
 using Sox.Websocket.Rfc6455.Messaging;
 using System;
 using System.Collections.Generic;
@@ -81,7 +81,7 @@ namespace Sox.Websocket.Rfc6455.Framing
                 payloadLength);
 
             MaskingKey = maskingKey;
-            Data = data ?? new byte[0];
+            Data = data ?? Array.Empty<byte>();
         }
 
         /// <summary>
@@ -94,7 +94,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         {
             Headers = headers;
             MaskingKey = maskingKey;
-            Data = data ?? new byte[0];
+            Data = data ?? Array.Empty<byte>();
         }
 
         #region Factory Methods

@@ -56,6 +56,8 @@ namespace Sox.Server.State
 
         private readonly int _maxMessageBytes;
 
+        private bool _disposed;
+
         /// <summary>
         /// Contruct a connection
         /// </summary>
@@ -193,11 +195,13 @@ namespace Sox.Server.State
 
         private void Dispose(bool disposing)
         {
+            if (_disposed) return;
             if (disposing)
             {
                 _stream?.Dispose();
                 _pinger?.Dispose();
             }
+            _disposed = true;
         }
 
         private async void Ping(object sender, ElapsedEventArgs elapsedEventArgs)

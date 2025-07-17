@@ -7,6 +7,7 @@ using Sox.Websocket.Rfc6455.Framing;
 using Sox.Websocket.Rfc6455.Messaging;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -84,6 +85,7 @@ namespace Sox.Server
         /// </summary>
         public readonly int MaxMessageBytes;
 
+        // This could get Interlocked.Read, removes unnecessary locking. Better would be ConcurrentDicitonary.Count/Length
         /// <summary>
         /// The amount of active connections
         /// </summary>
@@ -91,9 +93,9 @@ namespace Sox.Server
         {
             get
             {
-                lock (_locker)
+                lock (_connectionLock)
                 {
-                    return _connectionCount;
+                    return _connections.Count;
                 }
             }
         }
@@ -106,7 +108,7 @@ namespace Sox.Server
         /// <summary>
         /// The period of time before a connection will timeout on read
         /// </summary>
-        public readonly int ConnectionReadTimeoutMs = 0;
+        public readonly int ConnectionReadTimeoutMs;
 
         private CancellationTokenSource _cancellationTokenSource;
 
@@ -114,9 +116,9 @@ namespace Sox.Server
 
         private readonly ConcurrentDictionary<string, Connection> _connections = new ConcurrentDictionary<string, Connection>();
 
-        private readonly object _locker = new object();
+        private readonly object _connectionLock = new();
 
-        private long _connectionCount = 0;
+        private bool _disposed;
 
         /// <summary>
         /// Default constructor
@@ -166,11 +168,8 @@ namespace Sox.Server
                 }
                 catch (Exception ex)
                 {
-                    if (!(ex is ObjectDisposedException) && (ex is SocketException))
-                    {
-                        Console.WriteLine(ex);
-                        client?.Close();
-                    }
+                    Console.WriteLine(ex);
+                    client?.Close();
                 }
             }
         }
@@ -179,31 +178,25 @@ namespace Sox.Server
         public async Task Stop()
         {
             _cancellationTokenSource.Cancel();
-            var connectionIds = _connections.Keys.ToList();
+            List<string> connectionIds;
+            lock (_connectionLock)
+            {
+                connectionIds = _connections.Keys.ToList();
+            }
             foreach (var id in connectionIds)
             {
-                await CloseConnection(_connections[id], CloseStatusCode.GoingAway);
+                Connection conn;
+                lock (_connectionLock)
+                {
+                    conn = _connections.GetValueOrDefault(id);
+                }
+                if (conn != null)
+                {
+                    await CloseConnection(conn, CloseStatusCode.GoingAway);
+                }
             }
 
             _server.Stop();
-        }
-
-        /// <summary>
-        /// Dispose of all unmanaged resources
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        private void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = null;
-            }
         }
 
         private async Task HandleHttpUpgrade(TcpClient client)
@@ -243,7 +236,7 @@ namespace Sox.Server
             {
                 Console.WriteLine($"Invalid Http Request: {ex}");
                 stream.Close();
-                stream.Dispose();
+                await stream.DisposeAsync();
             }
         }
 
@@ -270,15 +263,19 @@ namespace Sox.Server
             // Begin sending the data to the remote device.  
             await connection.Send(response);
             connection.State = ConnectionState.Open;
-            _connections[connection.Id] = connection;
-            Interlocked.Increment(ref _connectionCount);
-            OnConnection?.Invoke(this, new OnConnectionEventArgs(connection));
+            lock (_connectionLock)
+            {
+                _connections[connection.Id] = connection;
+                OnConnection?.Invoke(this, new OnConnectionEventArgs(connection));
+            }
             await StartClientHandler(connection);
         }
 
+        // The body of this task should live in the connection.
         private async Task StartClientHandler(Connection connection)
         {
-            await Task.Factory.StartNew(async (state) =>
+            // Should be Task.Run, Task.Factory.StartNew doesn't handle async properly
+            await Task.Run(async () =>
             {
                 while (connection.State == ConnectionState.Open)
                 {
@@ -298,9 +295,10 @@ namespace Sox.Server
                     }
                 }
 
-            }, TaskCreationOptions.AttachedToParent, cancellationToken: _cancellationTokenSource.Token);
+            }, cancellationToken: _cancellationTokenSource.Token);
         }
 
+        // I would move this to the connection class
         private async Task HandleFrame(Connection connection, Frame frame)
         {
             // Close connection if not masked 
@@ -313,9 +311,8 @@ namespace Sox.Server
 
             switch (frame.OpCode)
             {
-                case OpCode.Binary:
-                case OpCode.Text:
-                case OpCode.Continuation:
+                // Improved this
+                case OpCode.Binary or OpCode.Text or OpCode.Continuation when connection.State == ConnectionState.Open:
                     await HandleDataFrame(frame, connection);
                     break;
                 case OpCode.Close:
@@ -333,6 +330,7 @@ namespace Sox.Server
             }
         }
 
+        // I would move this to the connection class
         private async Task HandleDataFrame(Frame frame, Connection connection)
         {
             if (await connection.TryAddFrame(frame))
@@ -378,9 +376,11 @@ namespace Sox.Server
         private async Task CloseConnection(Connection connection, CloseStatusCode reason)
         {
             await connection.Close(reason);
-            Interlocked.Decrement(ref _connectionCount);
-            OnDisconnection?.Invoke(this, new OnDisconnectionEventArgs(connection));
-            RemoveConnection(connection.Id);
+            lock (_connectionLock)
+            {
+                RemoveConnection(connection.Id);
+                OnDisconnection?.Invoke(this, new OnDisconnectionEventArgs(connection));
+            }
         }
 
         private void RemoveConnection(string id)
@@ -389,6 +389,27 @@ namespace Sox.Server
             {
                 removed.Dispose();
             }
+        }
+
+        /// <summary>
+        /// Dispose of all unmanaged resources
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+            if (disposing)
+            {
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
+            }
+
+            _disposed = true;
         }
     }
 }

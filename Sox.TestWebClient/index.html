@@ -64,7 +64,7 @@
 
         <div class="input-group mb-3">
           <div class="input-group-prepend">
-            <button id="btnActiveProtocol" class="btn btn-secondary" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">wss://</button>
+            <button id="btnActiveProtocol" class="btn btn-secondary" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">ws://</button>
             <div class="dropdown-menu">
               <a class="dropdown-item" href="#" id ="wsProtocolSelector">ws</a>
               <a class="dropdown-item" href="#" id ="wssProtocolSelector">wss</a>
@@ -72,7 +72,7 @@
           </div>
           <input type="text"
             id="txtServer"
-            value="localhost"
+            value="localhost:8888"
             class="form-control" />
           <div class="input-group-append">
             <button type="button"
@@ -160,7 +160,7 @@
     let spamInterval = null;
     let sockets = [];
     let files = [];
-    let protocol = 'wss';
+    let protocol = 'ws';
   
     $('body').on('click', '.btnDisconnect', function () {
       const index = $(this).attr('data-index');

@@ -137,6 +137,8 @@ namespace Sox.Websocket.Rfc6455.Framing
         ///     Create a binary frame
         /// </summary>
         /// <param name="payload">The frame payload</param>
+        /// <param name="shouldMask"></param>
+        /// <param name="isFinal"></param>
         /// <returns>A Binary Websocket Frame</returns>
         internal static Frame CreateBinary(byte[] payload,
             bool shouldMask = false,
@@ -155,6 +157,8 @@ namespace Sox.Websocket.Rfc6455.Framing
         ///     Create a continuation frame
         /// </summary>
         /// <param name="payload">The frame payload</param>
+        /// <param name="shouldMask"></param>
+        /// <param name="isFinal"></param>
         /// <returns>A Binary Websocket Frame</returns>
         internal static Frame CreateContinuation(byte[] payload,
             bool shouldMask = false,
@@ -322,6 +326,7 @@ namespace Sox.Websocket.Rfc6455.Framing
                 Array.Reverse(bytes);
         }
 
+        /// <inheritdoc/>
         public override string ToString()
         {
             return $"FIN: {Headers.IsFinal} | " +

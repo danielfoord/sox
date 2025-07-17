@@ -162,7 +162,7 @@ namespace Sox.Server
                 try
                 {
                     client = await _server.AcceptTcpClientAsync();
-                    await HandleHttpUpgrade(client);
+                    _ = Task.Run(() => HandleHttpUpgrade(client));
                 }
                 catch (Exception ex)
                 {

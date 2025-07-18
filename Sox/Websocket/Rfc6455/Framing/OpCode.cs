@@ -6,7 +6,7 @@
     /// <remarks>
     /// See: https://tools.ietf.org/html/rfc6455#section-11.8
     /// </remarks>
-    public enum OpCode
+    public enum OpCode : byte
     {
         Continuation = 0x0,
         Text = 0x1,

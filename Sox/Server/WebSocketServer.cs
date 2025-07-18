@@ -85,7 +85,6 @@ namespace Sox.Server
         /// </summary>
         public readonly int MaxMessageBytes;
 
-        // This could get Interlocked.Read, removes unnecessary locking. Better would be ConcurrentDicitonary.Count/Length
         /// <summary>
         /// The amount of active connections
         /// </summary>
@@ -311,7 +310,6 @@ namespace Sox.Server
 
             switch (frame.OpCode)
             {
-                // Improved this
                 case OpCode.Binary or OpCode.Text or OpCode.Continuation when connection.State == ConnectionState.Open:
                     await HandleDataFrame(frame, connection);
                     break;

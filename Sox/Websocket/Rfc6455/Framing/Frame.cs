@@ -310,13 +310,8 @@ namespace Sox.Websocket.Rfc6455.Framing
         private static byte[] CreateMaskingKey()
         {
             Random random = new();
-            var maskingKey = new byte[4];
-
-            for (var i = 0; i < 4; i++)
-            {
-                maskingKey[i] = (byte)random.Next(255);
-            }
-
+            byte[] maskingKey = new byte[4];
+            Array.Fill(maskingKey,  (byte)random.Next(255));
             return maskingKey;
         }
 

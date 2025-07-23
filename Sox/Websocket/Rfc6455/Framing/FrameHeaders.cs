@@ -72,7 +72,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// Unpack the <c>Frame headers from bytes</c>
         /// </summary>
         /// <param name="stream">The byte input stream</param>
-        /// <returns>A unpacked <c>System.Threading.Task<FrameHeaders></c> instance</returns>
+        /// <returns>A unpacked <c>System.Threading.Task&lt;FrameHeaders&gt;</c> instance</returns>
         internal static async Task<FrameHeaders> Unpack(Stream stream)
         {
             var bytes = await stream.ReadBytesAsync(2);
@@ -109,7 +109,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <summary>
         /// Pack the frame into bytes
         /// </summary>
-        /// <returns>A <c>System.Threading.Task<byte[]></c> containing the <c>Frame</c></returns>
+        /// <returns>A <c>System.Threading.Task&lt;byte[]&gt;</c> containing the <c>Frame</c></returns>
         internal async Task<byte[]> PackAsync()
         {
             using var stream = new MemoryStream { Position = 0 };
@@ -130,7 +130,7 @@ namespace Sox.Websocket.Rfc6455.Framing
             {
                 stream.WriteByte((byte)(mask | (ushort)PayloadLength));
             }
-            else if (PayloadLength >= 126 && PayloadLength <= ushort.MaxValue)
+            else if (PayloadLength is >= 126 and <= ushort.MaxValue)
             {
                 stream.WriteByte((byte)(mask | 126));
                 var lengthBytes = BitConverter.GetBytes((ushort)PayloadLength);

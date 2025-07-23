@@ -13,17 +13,17 @@ namespace Sox.EchoServer
     {
         private static WebSocketServer _server;
 
-        private static readonly ManualResetEventSlim _serverWaitHandle;
+        private static readonly ManualResetEventSlim ServerWaitHandle;
 
-        private static readonly IPAddress _ipAddress = IPAddress.Parse("127.0.0.1");
+        private static readonly IPAddress IpAddress = IPAddress.Parse("127.0.0.1");
 
-        private static int MessageCount;
+        private static int _messageCount;
 
-        private static readonly object locker = new();
+        private static readonly object Locker = new();
 
         static Program()
         {
-            _serverWaitHandle = new ManualResetEventSlim();
+            ServerWaitHandle = new ManualResetEventSlim();
         }
 
         static void Main(string[] args)
@@ -41,16 +41,15 @@ namespace Sox.EchoServer
                 _server.OnConnection += OnConnect;
                 _server.OnDisconnection += OnDisconnect;
                 _server.OnTextMessage += OnTextMessage;
-                _server.OnBinaryMessage += OnBinaryMessage;
                 _server.OnError += OnError;
                 _server.OnFrame += OnFrame;
 
                 try
                 {
-                    Console.WriteLine($"Starting Sox server...");
+                    Console.WriteLine("Starting Sox server...");
                     _ = _server.Start();
                     Console.WriteLine($"Sox server listening on {_server.Protocol.ToString().ToLower()}://{_server.IpAddress}:{_server.Port}");
-                    _serverWaitHandle.Wait();
+                    ServerWaitHandle.Wait();
                     return 0;
                 }
                 catch (Exception e)
@@ -64,29 +63,29 @@ namespace Sox.EchoServer
         private static WebSocketServer CreateServer(string protocol = "ws") => protocol switch
         {
             "ws" => new WebSocketServer(
-                  ipAddress: _ipAddress,
+                  ipAddress: IpAddress,
                   port: 8888),
             "wss" => new WebSocketServer(
-                  ipAddress: _ipAddress,
+                  ipAddress: IpAddress,
                   port: 443,
-                  x509Certificate: new X509Certificate2($"sox.pfx", "sox")),
+                  x509Certificate: X509CertificateLoader.LoadCertificateFromFile("sox.pfx")),
             _ => throw new NotSupportedException($"{protocol} not supported")
         };
 
         private static async Task StopServer()
         {
             await _server.Stop();
-            _serverWaitHandle.Set();
+            ServerWaitHandle.Set();
         }
 
-        private static async void OnSigTerm(AssemblyLoadContext ctx)
+        private static void OnSigTerm(AssemblyLoadContext ctx)
         {
-            await StopServer();
+            StopServer().Wait();
         }
 
-        private static async void OnSigTerm(object sender, ConsoleCancelEventArgs e)
+        private static void OnSigTerm(object sender, ConsoleCancelEventArgs e)
         {
-            await StopServer();
+            StopServer().Wait();
         }
 
         private static void OnConnect(object sender, OnConnectionEventArgs eventArgs)
@@ -101,23 +100,18 @@ namespace Sox.EchoServer
             Console.WriteLine($"{eventArgs.Connection.Id} disconnected! | {s.ConnectionCount}");
         }
 
-        private static async void OnTextMessage(object sender, OnTextMessageEventArgs eventArgs)
+        private static void OnTextMessage(object sender, OnTextMessageEventArgs eventArgs)
         {
             var connection = eventArgs.Connection;
             var message = eventArgs.Payload;
-            lock (locker)
-            {
-                Interlocked.Increment(ref MessageCount);
-                Console.WriteLine($"{connection.Id} sent {message} (message #{MessageCount})");
-            }
-            await connection.Send($"{connection.Id} sent {message}");
-        }
 
-        private static void OnBinaryMessage(object sender, OnBinaryMessageEventArgs eventArgs)
-        {
-            var connection = eventArgs.Connection;
-            var message = eventArgs.Payload;
-            Console.WriteLine($"{connection.Id} sent {message}");
+            lock (Locker)
+            {
+                Interlocked.Increment(ref _messageCount);
+                Console.WriteLine($"{connection.Id} sent {message} (message #{_messageCount})");
+            }
+
+            connection.Send($"{connection.Id} sent {message}").Wait();
         }
 
         private static void OnError(object sender, OnErrorEventArgs eventArgs)
@@ -127,7 +121,7 @@ namespace Sox.EchoServer
 
         private static void OnFrame(object sender, OnFrameEventArgs eventArgs)
         {
-            Console.WriteLine($"CID: {eventArgs.Connection.Id} | Received WS Frame ({eventArgs.Frame.OpCode}) | : Plength - {eventArgs.Frame.PayloadLength:N0}");
+            // Console.WriteLine($"CID: {eventArgs.Connection.Id} | Received Frame ({eventArgs.Frame.OpCode}) | : Plength - {eventArgs.Frame.PayloadLength:N0}");
         }
     }
 }

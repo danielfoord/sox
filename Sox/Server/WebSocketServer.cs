@@ -1,4 +1,4 @@
-﻿using Sox.Extensions;
+using Sox.Extensions;
 using Sox.Http;
 using Sox.Server.Events;
 using Sox.Server.State;
@@ -293,7 +293,6 @@ namespace Sox.Server
                         }
                     }
                 }
-
             }, cancellationToken: _cancellationTokenSource.Token);
         }
 

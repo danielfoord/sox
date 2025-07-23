@@ -46,7 +46,7 @@ namespace Sox.EchoServer
 
                 try
                 {
-                    Console.WriteLine($"Starting Sox server...");
+                    Console.WriteLine("Starting Sox server...");
                     _ = _server.Start();
                     Console.WriteLine($"Sox server listening on {_server.Protocol.ToString().ToLower()}://{_server.IpAddress}:{_server.Port}");
                     ServerWaitHandle.Wait();
@@ -68,7 +68,7 @@ namespace Sox.EchoServer
             "wss" => new WebSocketServer(
                   ipAddress: IpAddress,
                   port: 443,
-                  x509Certificate: new X509Certificate2($"sox.pfx", "sox")),
+                  x509Certificate: X509CertificateLoader.LoadCertificateFromFile("sox.pfx")),
             _ => throw new NotSupportedException($"{protocol} not supported")
         };
 

@@ -1,4 +1,4 @@
-﻿using Sox.Extensions;
+using Sox.Extensions;
 using Sox.Http;
 using Sox.Websocket.Rfc6455;
 using Sox.Websocket.Rfc6455.Framing;
@@ -6,7 +6,9 @@ using Sox.Websocket.Rfc6455.Messaging;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+using System.IO.Pipelines;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Timers;
@@ -37,14 +39,18 @@ namespace Sox.Server.State
         // TcpClient underlying stream
         private readonly Stream _stream;
 
-        // Size of receive buffer.  
+        // Reads frames off the stream without allocating/copying unless a frame straddles more
+        // than one of the Pipe's internal buffer segments
+        private readonly PipeReader _pipeReader;
+
+        // Reassembles received frames into complete messages
+        private readonly MessageAssembler _messageAssembler;
+
+        // Size of receive buffer.
         internal const int MaxFrameBytes = 4096;
 
         // How long to wait between pings to this connection
         internal const int PingIntervalMs = 60000;
-
-        // Websocket frames.
-        private readonly List<Frame> _frameBuffer = new List<Frame>();
 
         // Scheduled pinger
         private readonly PingTimer _pinger;
@@ -53,8 +59,6 @@ namespace Sox.Server.State
         private readonly int StreamWriteTimeoutMs = 2000;
 
         private readonly Channel<byte[]> _channel;
-
-        private readonly int _maxMessageBytes;
 
         private bool _disposed;
 
@@ -70,7 +74,8 @@ namespace Sox.Server.State
             _channel = Channel.CreateUnbounded<byte[]>();
             _stream = stream;
             _stream.WriteTimeout = StreamWriteTimeoutMs;
-            _maxMessageBytes = maxMessageBytes;
+            _pipeReader = PipeReader.Create(_stream);
+            _messageAssembler = new MessageAssembler(maxMessageBytes);
             _pinger = new PingTimer
             {
                 Enabled = true,
@@ -100,7 +105,7 @@ namespace Sox.Server.State
             {
                 State = ConnectionState.Closing;
                 _pinger.Stop();
-                await EnqueueAsync(Frame.CreateClose(reason));
+                await EnqueueAsync(WebSocketFrame.CreateClose(reason));
                 State = ConnectionState.Closed;
             }
         }
@@ -112,7 +117,8 @@ namespace Sox.Server.State
         /// <returns>A task that resolves when the data has been sent</returns>
         public async Task Send(string data)
         {
-            await foreach (var frame in new Message(data).Pack(MaxFrameBytes))
+            using var message = new WebSocketMessage(data);
+            foreach (var frame in message.Pack(MaxFrameBytes))
             {
                 await EnqueueAsync(frame);
             }
@@ -125,7 +131,8 @@ namespace Sox.Server.State
         /// <returns>A task that resolves when the data has been sent</returns>
         public async Task Send(byte[] data)
         {
-            await foreach (var frame in new Message(data).Pack(MaxFrameBytes))
+            using var message = new WebSocketMessage(data);
+            foreach (var frame in message.Pack(MaxFrameBytes))
             {
                 await EnqueueAsync(frame);
             }
@@ -147,32 +154,60 @@ namespace Sox.Server.State
         /// <returns>A task that resolves when the frame has been sent</returns>
         internal async Task Pong()
         {
-            await EnqueueAsync(Frame.CreatePong());
+            await EnqueueAsync(WebSocketFrame.CreatePong());
         }
 
         /// <summary>
-        /// Read a frame asynchronously from the connection
+        /// Read frames asynchronously from the connection as they arrive, without allocating or
+        /// copying the payload unless a frame straddles more than one of the Pipe's internal
+        /// buffer segments.
         /// </summary>
-        /// <returns></returns>
-        internal async Task<Frame> ReadFrameAsync()
+        /// <remarks>
+        /// Each yielded <c>WebSocketFrame</c>'s memory is only valid until the enumerator is
+        /// advanced again (i.e. for the duration of a single loop iteration) - it may borrow the
+        /// Pipe's internal read buffer, which can be reused/overwritten once more data is read.
+        /// </remarks>
+        /// <param name="cancellationToken">Cancels the read loop</param>
+        internal async IAsyncEnumerable<WebSocketFrame> ReadFramesAsync([EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            return await Frame.UnpackAsync(_stream);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var result = await _pipeReader.ReadAsync(cancellationToken);
+                var buffer = result.Buffer;
+
+                while (WebSocketFrame.TryParse(ref buffer, out var frame))
+                {
+                    yield return frame;
+                }
+
+                _pipeReader.AdvanceTo(buffer.Start, buffer.End);
+
+                if (result.IsCompleted || result.IsCanceled)
+                {
+                    yield break;
+                }
+            }
         }
 
         /// <summary>
-        /// Try append a frame to the connection's frame buffer
+        /// Append a received data frame to the message currently being assembled
         /// </summary>
         /// <param name="frame">The frame to append</param>
-        /// <returns>true if the frame was appended sucessfully</returns>
-        internal async Task<bool> TryAddFrame(Frame frame)
+        /// <returns>
+        ///     The completed message once <paramref name="frame"/> is the final frame of one;
+        ///     <c>null</c> if more fragments are expected, or if the message was rejected for
+        ///     exceeding the connection's max message size (in which case the connection is
+        ///     closed with <see cref="CloseStatusCode.MessageTooBig"/>)
+        /// </returns>
+        internal async Task<WebSocketMessage> TryCompleteMessage(WebSocketFrame frame)
         {
-            _frameBuffer.Add(frame);
-            if (frame.PayloadLength > _maxMessageBytes || _frameBuffer.Sum(f => f.PayloadLength) > _maxMessageBytes)
+            if (!_messageAssembler.TryAppend(frame, out var message))
             {
                 await Close(CloseStatusCode.MessageTooBig);
-                return false;
+                return null;
             }
-            return true;
+
+            return message;
         }
 
         /// <summary>
@@ -198,6 +233,8 @@ namespace Sox.Server.State
             if (_disposed) return;
             if (disposing)
             {
+                _messageAssembler.Dispose();
+                _pipeReader.Complete();
                 _stream?.Dispose();
                 _pinger?.Dispose();
             }
@@ -208,7 +245,7 @@ namespace Sox.Server.State
         {
             try
             {
-                await EnqueueAsync(Frame.CreatePing());
+                await EnqueueAsync(WebSocketFrame.CreatePing());
             }
             catch (IOException)
             {
@@ -216,9 +253,9 @@ namespace Sox.Server.State
             }
         }
 
-        private async Task EnqueueAsync(Frame frame)
+        private async Task EnqueueAsync(WebSocketFrame frame)
         {
-            await EnqueueAsync(await frame.PackAsync());
+            await EnqueueAsync(frame.Pack());
         }
 
         private async Task EnqueueAsync(byte[] frame)
@@ -234,17 +271,10 @@ namespace Sox.Server.State
         {
             var frame = await _channel.Reader.ReadAsync();
             await _stream.WriteAndFlushAsync(frame);
-            if (_channel.Reader.Count > 0) 
+            if (_channel.Reader.Count > 0)
             {
                 await DequeueAsync();
             }
-        }
-
-        internal async Task<Message> UnpackMessage()
-        {
-            var message = await Message.Unpack(_frameBuffer);
-            _frameBuffer.Clear();
-            return message;
         }
     }
 }

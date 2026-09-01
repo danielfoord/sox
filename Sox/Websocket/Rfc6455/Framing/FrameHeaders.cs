@@ -1,8 +1,7 @@
 
-using Sox.Extensions;
 using System;
-using System.IO;
-using System.Threading.Tasks;
+using System.Buffers;
+using System.Buffers.Binary;
 
 namespace Sox.Websocket.Rfc6455.Framing
 {
@@ -11,6 +10,12 @@ namespace Sox.Websocket.Rfc6455.Framing
     /// </summary>
     public struct FrameHeaders
     {
+        /// <summary>
+        ///     The maximum amount of bytes a packed <c>FrameHeaders</c> can occupy on the wire
+        ///     (1 byte + 1 byte + up to 8 bytes of extended payload length)
+        /// </summary>
+        internal const int MaxSize = 10;
+
         /// <summary>
         ///     Frame opcode
         /// </summary>
@@ -69,26 +74,44 @@ namespace Sox.Websocket.Rfc6455.Framing
         }
 
         /// <summary>
-        /// Unpack the <c>Frame headers from bytes</c>
+        /// Attempt to parse <c>FrameHeaders</c> from a <c>SequenceReader&lt;byte&gt;</c> without
+        /// allocating. If the reader does not yet contain a full set of headers, the reader is
+        /// rewound to its original position and <c>false</c> is returned so the caller can wait
+        /// for more data.
         /// </summary>
-        /// <param name="stream">The byte input stream</param>
-        /// <returns>A unpacked <c>System.Threading.Task&lt;FrameHeaders&gt;</c> instance</returns>
-        internal static async Task<FrameHeaders> Unpack(Stream stream)
+        /// <param name="reader">The byte sequence reader, advanced past the headers on success</param>
+        /// <param name="headers">The parsed headers</param>
+        /// <returns><c>true</c> if a complete set of headers was parsed</returns>
+        internal static bool TryParse(ref SequenceReader<byte> reader, out FrameHeaders headers)
         {
-            var bytes = await stream.ReadBytesAsync(2);
-            var payloadLength = bytes[1] & 0x7F;
+            var checkpoint = reader;
+            headers = default;
+
+            if (!reader.TryRead(out var byte0) || !reader.TryRead(out var byte1))
+            {
+                reader = checkpoint;
+                return false;
+            }
+
+            var payloadLength = byte1 & 0x7F;
 
             if (payloadLength == 126)
             {
-                var lenBytes = await stream.ReadBytesAsync(2);
-                EnsureBigEndian(lenBytes);
-                payloadLength = BitConverter.ToUInt16(lenBytes, 0);
+                if (!reader.TryReadBigEndian(out short len16))
+                {
+                    reader = checkpoint;
+                    return false;
+                }
+                payloadLength = unchecked((ushort)len16);
             }
             else if (payloadLength == 127)
             {
-                var lenBytes = await stream.ReadBytesAsync(8);
-                EnsureBigEndian(lenBytes);
-                var length = BitConverter.ToUInt64(lenBytes, 0);
+                if (!reader.TryReadBigEndian(out long len64))
+                {
+                    reader = checkpoint;
+                    return false;
+                }
+                var length = unchecked((ulong)len64);
                 if (length > int.MaxValue)
                 {
                     throw new OverflowException("Frame payload length cannot exceed maximum supported Array dimensions");
@@ -96,24 +119,27 @@ namespace Sox.Websocket.Rfc6455.Framing
                 payloadLength = (int)length;
             }
 
-            return new FrameHeaders(
-                isFinal: (bytes[0] & 0x80) >> 7 == 1,
-                rsv1: (bytes[0] & 0x40) >> 6 == 1,
-                rsv2: (bytes[0] & 0x20) >> 5 == 1,
-                rsv3: (bytes[0] & 0x10) >> 4 == 1,
-                opCode: (OpCode)(bytes[0] & 0xF),
-                shouldMask: (bytes[1] & 0x80) >> 7 == 1,
+            headers = new FrameHeaders(
+                isFinal: (byte0 & 0x80) >> 7 == 1,
+                rsv1: (byte0 & 0x40) >> 6 == 1,
+                rsv2: (byte0 & 0x20) >> 5 == 1,
+                rsv3: (byte0 & 0x10) >> 4 == 1,
+                opCode: (OpCode)(byte0 & 0xF),
+                shouldMask: (byte1 & 0x80) >> 7 == 1,
                 payloadLength: payloadLength);
+
+            return true;
         }
 
         /// <summary>
-        /// Pack the frame into bytes
+        /// Pack the frame headers into bytes, writing directly into the supplied buffer
         /// </summary>
-        /// <returns>A <c>System.Threading.Task&lt;byte[]&gt;</c> containing the <c>Frame</c></returns>
-        internal async Task<byte[]> PackAsync()
+        /// <param name="destination">
+        ///     The buffer to write into. Must be at least <see cref="MaxSize"/> bytes long
+        /// </param>
+        /// <returns>The amount of bytes written</returns>
+        internal int WriteTo(Span<byte> destination)
         {
-            using var stream = new MemoryStream { Position = 0 };
-
             // First byte values
             var finalMask = IsFinal ? 0x80 : 0x0;
             var rsv1Mask = Rsv1 ? 0x40 : 0x0;
@@ -123,39 +149,26 @@ namespace Sox.Websocket.Rfc6455.Framing
 
             // Second byte values
             var mask = ShouldMask ? 0x80 : 0x0;
-            stream.WriteByte((byte)(finalMask | rsv1Mask | rsv2Mask | rsv3Mask | opCode));
+
+            destination[0] = (byte)(finalMask | rsv1Mask | rsv2Mask | rsv3Mask | opCode);
 
             // Pack the shouldMask and payload length (1bit+7bit | 1bit+7bit+16bit | 1bit+7bit+64bit)
             if (PayloadLength < 126)
             {
-                stream.WriteByte((byte)(mask | (ushort)PayloadLength));
-            }
-            else if (PayloadLength is >= 126 and <= ushort.MaxValue)
-            {
-                stream.WriteByte((byte)(mask | 126));
-                var lengthBytes = BitConverter.GetBytes((ushort)PayloadLength);
-                EnsureBigEndian(lengthBytes);
-                await stream.WriteBytesAsync(lengthBytes);
-            }
-            else if (PayloadLength > ushort.MaxValue)
-            {
-                stream.WriteByte((byte)(mask | 127));
-                var lengthBytes = BitConverter.GetBytes((ulong)PayloadLength);
-                EnsureBigEndian(lengthBytes);
-                await stream.WriteBytesAsync(lengthBytes);
+                destination[1] = (byte)(mask | PayloadLength);
+                return 2;
             }
 
-            await stream.FlushAsync();
-
-            return stream.ToArray();
-        }
-
-        private static void EnsureBigEndian(byte[] bytes)
-        {
-            if (BitConverter.IsLittleEndian)
+            if (PayloadLength <= ushort.MaxValue)
             {
-                Array.Reverse(bytes);
+                destination[1] = (byte)(mask | 126);
+                BinaryPrimitives.WriteUInt16BigEndian(destination.Slice(2, 2), (ushort)PayloadLength);
+                return 4;
             }
+
+            destination[1] = (byte)(mask | 127);
+            BinaryPrimitives.WriteUInt64BigEndian(destination.Slice(2, 8), (ulong)PayloadLength);
+            return 10;
         }
     }
 }

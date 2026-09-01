@@ -103,7 +103,7 @@ namespace Sox.EchoServer
         private static void OnTextMessage(object sender, OnTextMessageEventArgs eventArgs)
         {
             var connection = eventArgs.Connection;
-            var message = eventArgs.Payload;
+            var message = eventArgs.GetString();
 
             lock (Locker)
             {

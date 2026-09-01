@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.Threading.Channels" Version="5.0.0" />
+    <PackageReference Include="System.IO.Pipelines" Version="9.0.4" />
   </ItemGroup>
 
 </Project>

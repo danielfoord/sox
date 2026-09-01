@@ -276,28 +276,32 @@ namespace Sox.Server
             // Should be Task.Run, Task.Factory.StartNew doesn't handle async properly
             await Task.Run(async () =>
             {
-                while (connection.State == ConnectionState.Open)
+                try
                 {
-                    try
+                    await foreach (var frame in connection.ReadFramesAsync(_cancellationTokenSource.Token))
                     {
-                        var frame = await connection.ReadFrameAsync();
                         OnFrame?.Invoke(this, new OnFrameEventArgs(connection, frame));
                         await HandleFrame(connection, frame);
-                    }
-                    catch (Exception ex)
-                    {
-                        if (!_cancellationTokenSource.IsCancellationRequested)
+
+                        if (connection.State != ConnectionState.Open)
                         {
-                            OnError?.Invoke(this, new OnErrorEventArgs(connection, ex));
-                            await CloseConnection(connection, CloseStatusCode.ProtocolError);
+                            break;
                         }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (!_cancellationTokenSource.IsCancellationRequested)
+                    {
+                        OnError?.Invoke(this, new OnErrorEventArgs(connection, ex));
+                        await CloseConnection(connection, CloseStatusCode.ProtocolError);
                     }
                 }
             }, cancellationToken: _cancellationTokenSource.Token);
         }
 
         // I would move this to the connection class
-        private async Task HandleFrame(Connection connection, Frame frame)
+        private async Task HandleFrame(Connection connection, WebSocketFrame frame)
         {
             // Close connection if not masked 
             // See: https://tools.ietf.org/html/rfc6455#section-5.1
@@ -328,27 +332,27 @@ namespace Sox.Server
         }
 
         // I would move this to the connection class
-        private async Task HandleDataFrame(Frame frame, Connection connection)
+        private async Task HandleDataFrame(WebSocketFrame frame, Connection connection)
         {
-            if (await connection.TryAddFrame(frame))
+            using var message = await connection.TryCompleteMessage(frame);
+            if (message == null)
             {
-                if (frame.Headers.IsFinal)
-                {
-                    var message = await connection.UnpackMessage();
+                // Either more fragments are expected, or the message was rejected for exceeding
+                // the max message size (connection.TryCompleteMessage already closed it).
+                return;
+            }
 
-                    switch (message.Type)
-                    {
-                        case MessageType.Binary:
-                            OnBinaryMessage?.Invoke(this, new OnBinaryMessageEventArgs(connection, message.Data));
-                            break;
-                        case MessageType.Text:
-                            OnTextMessage?.Invoke(this, new OnTextMessageEventArgs(connection, message.Data.GetString()));
-                            break;
-                        default:
-                            await CloseConnection(connection, CloseStatusCode.ProtocolError);
-                            break;
-                    }
-                }
+            switch (message.Type)
+            {
+                case MessageType.Binary:
+                    OnBinaryMessage?.Invoke(this, new OnBinaryMessageEventArgs(connection, message.Data));
+                    break;
+                case MessageType.Text:
+                    OnTextMessage?.Invoke(this, new OnTextMessageEventArgs(connection, message.Data));
+                    break;
+                default:
+                    await CloseConnection(connection, CloseStatusCode.ProtocolError);
+                    break;
             }
         }
 

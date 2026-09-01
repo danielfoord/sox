@@ -1,4 +1,4 @@
-﻿using Sox.Server.State;
+using Sox.Server.State;
 using System;
 
 namespace Sox.Server.Events
@@ -16,14 +16,19 @@ namespace Sox.Server.Events
         /// <summary>
         /// The message payload
         /// </summary>
-        public readonly byte[] Payload;
+        /// <remarks>
+        /// This borrows the connection's read buffer (or a pooled reassembly buffer for a
+        /// fragmented message) and is only valid for the duration of this event invocation -
+        /// copy it (e.g. <c>Payload.ToArray()</c>) if you need to keep the data any longer.
+        /// </remarks>
+        public readonly ReadOnlyMemory<byte> Payload;
 
         /// <summary>
         /// Default constructor
         /// </summary>
         /// <param name="connection">The subject Connection of the event</param>
         /// <param name="payload">The message payload</param>
-        public OnBinaryMessageEventArgs(Connection connection, byte[] payload)
+        public OnBinaryMessageEventArgs(Connection connection, ReadOnlyMemory<byte> payload)
         {
             Connection = connection;
             Payload = payload;

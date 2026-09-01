@@ -1,9 +1,8 @@
 using Sox.Extensions;
 using Sox.Websocket.Rfc6455.Messaging;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
+using System.Buffers;
+using System.Runtime.InteropServices;
 
 /*
   https://tools.ietf.org/html/rfc6455#section-5.2
@@ -34,12 +33,20 @@ namespace Sox.Websocket.Rfc6455.Framing
     /// Represents a Rfc6455 websocket frame
     /// see: https://tools.ietf.org/html/rfc6455#section-5.2
     /// </summary>
-    public class Frame
+    /// <remarks>
+    /// A <c>WebSocketFrame</c> parsed off the wire via <see cref="TryParse"/> does not own its
+    /// <see cref="Data"/>/<see cref="MaskingKey"/> memory in the common case — it borrows a slice
+    /// of the underlying <c>PipeReader</c> buffer. That memory is only valid until the reader is
+    /// advanced past it, which happens as soon as the frame has been handed off (to the
+    /// <c>OnFrame</c> event, and to the message assembler). Do not retain a <c>WebSocketFrame</c>
+    /// or its memory beyond that synchronous handoff.
+    /// </remarks>
+    public readonly struct WebSocketFrame
     {
         /// <summary>
         ///     The frames headers
         /// </summary>
-        public FrameHeaders Headers;
+        public readonly FrameHeaders Headers;
 
         /// <summary>
         ///     Frame opcode
@@ -49,12 +56,12 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <summary>
         ///     The key used to shouldMask the data
         /// </summary>
-        public readonly byte[] MaskingKey;
+        public readonly ReadOnlyMemory<byte> MaskingKey;
 
         /// <summary>
         ///     The payload data
         /// </summary>
-        public readonly byte[] Data;
+        public readonly ReadOnlyMemory<byte> Data;
 
         /// <summary>
         ///     The length of the payloads data
@@ -67,9 +74,9 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <returns>The decoded payload</returns>
         public string DecodedData => Data.GetString();
 
-        internal Frame(bool isFinal, bool rsv1, bool rsv2, bool rsv3,
-            OpCode opCode, bool shouldMask, byte[] maskingKey = null,
-            int payloadLength = 0, byte[] data = null)
+        internal WebSocketFrame(bool isFinal, bool rsv1, bool rsv2, bool rsv3,
+            OpCode opCode, bool shouldMask, ReadOnlyMemory<byte> maskingKey = default,
+            int payloadLength = 0, ReadOnlyMemory<byte> data = default)
         {
             Headers = new FrameHeaders(
                 isFinal,
@@ -81,7 +88,7 @@ namespace Sox.Websocket.Rfc6455.Framing
                 payloadLength);
 
             MaskingKey = maskingKey;
-            Data = data ?? Array.Empty<byte>();
+            Data = data;
         }
 
         /// <summary>
@@ -90,11 +97,11 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <param name="headers">The <c>FrameHeaders</c> for this <c>Frame</c></param>
         /// <param name="maskingKey">The data masking key</param>
         /// <param name="data">The frame payload</param>
-        internal Frame(FrameHeaders headers, byte[] maskingKey, byte[] data)
+        internal WebSocketFrame(FrameHeaders headers, ReadOnlyMemory<byte> maskingKey, ReadOnlyMemory<byte> data)
         {
             Headers = headers;
             MaskingKey = maskingKey;
-            Data = data ?? Array.Empty<byte>();
+            Data = data;
         }
 
         #region Factory Methods
@@ -106,7 +113,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <param name="isFinal">Flag to indicate if this is the final frame of the message</param>
         /// <param name="shouldMask">True if the frame payload should be masked</param>
         /// <returns>A <c>Frame</c> instance</returns>
-        internal static Frame CreateInitiationFrame(MessageType type, byte[] payload, bool isFinal = true, bool shouldMask = true) => type switch
+        internal static WebSocketFrame CreateInitiationFrame(MessageType type, ReadOnlyMemory<byte> payload, bool isFinal = true, bool shouldMask = true) => type switch
         {
             MessageType.Binary => CreateBinary(payload: payload, shouldMask: shouldMask, isFinal: isFinal),
             MessageType.Text => CreateText(payload: payload.GetString(), shouldMask: shouldMask, isFinal: isFinal),
@@ -120,18 +127,22 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <param name="shouldMask">True if the frame payload should be masked</param>
         /// <param name="isFinal">True if the frame is the last frame of the message</param>
         /// <returns>An instance of a Frame</returns>
-        internal static Frame CreateText(string payload,
+        internal static WebSocketFrame CreateText(string payload,
             bool shouldMask = false,
-            bool isFinal = true) => new(
-            isFinal: isFinal,
-            rsv1: false,
-            rsv2: false,
-            rsv3: false,
-            opCode: OpCode.Text,
-            shouldMask: shouldMask,
-            payloadLength: payload.Length,
-            maskingKey: CreateMaskingKey(),
-            data: payload.GetBytes());
+            bool isFinal = true)
+        {
+            var bytes = payload.GetBytes();
+            return new(
+                isFinal: isFinal,
+                rsv1: false,
+                rsv2: false,
+                rsv3: false,
+                opCode: OpCode.Text,
+                shouldMask: shouldMask,
+                payloadLength: bytes.Length,
+                maskingKey: CreateMaskingKey(),
+                data: bytes);
+        }
 
         /// <summary>
         ///     Create a binary frame
@@ -140,7 +151,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <param name="shouldMask"></param>
         /// <param name="isFinal"></param>
         /// <returns>A Binary Websocket Frame</returns>
-        internal static Frame CreateBinary(byte[] payload,
+        internal static WebSocketFrame CreateBinary(ReadOnlyMemory<byte> payload,
             bool shouldMask = false,
             bool isFinal = true) => new(
             isFinal: isFinal,
@@ -160,7 +171,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         /// <param name="shouldMask"></param>
         /// <param name="isFinal"></param>
         /// <returns>A Binary Websocket Frame</returns>
-        internal static Frame CreateContinuation(byte[] payload,
+        internal static WebSocketFrame CreateContinuation(ReadOnlyMemory<byte> payload,
             bool shouldMask = false,
             bool isFinal = false) => new(
             isFinal: isFinal,
@@ -177,7 +188,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         ///     Create a ping frame
         /// </summary>
         /// <returns>A Ping Websocket Frame</returns>
-        internal static Frame CreatePing() => new(
+        internal static WebSocketFrame CreatePing() => new(
             isFinal: true,
             rsv1: false,
             rsv2: false,
@@ -189,7 +200,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         ///     Create a pong frame
         /// </summary>
         /// <returns>A Ping Websocket Frame</returns>
-        internal static Frame CreatePong() => new(
+        internal static WebSocketFrame CreatePong() => new(
             isFinal: true,
             rsv1: false,
             rsv2: false,
@@ -201,7 +212,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         ///     Create a close frame
         /// </summary>
         /// <returns>A Ping Websocket Frame</returns>
-        internal static Frame CreateClose() => new(
+        internal static WebSocketFrame CreateClose() => new(
             isFinal: true,
             rsv1: false,
             rsv2: false,
@@ -213,7 +224,7 @@ namespace Sox.Websocket.Rfc6455.Framing
         ///     Create a close frame
         /// </summary>
         /// <returns>A Ping Websocket Frame</returns>
-        internal static Frame CreateClose(CloseStatusCode closeCode) => new(
+        internal static WebSocketFrame CreateClose(CloseStatusCode closeCode) => new(
             isFinal: true,
             rsv1: false,
             rsv2: false,
@@ -226,99 +237,142 @@ namespace Sox.Websocket.Rfc6455.Framing
 
         #region IO Methods
         /// <summary>
-        ///     Read a <c>Frame</c> directly from a <c>System.IO.Stream</c>
+        ///     Attempt to parse a <c>WebSocketFrame</c> directly out of a <c>ReadOnlySequence&lt;byte&gt;</c>
+        ///     without allocating or copying, unless the frame straddles more than one of the
+        ///     sequence's underlying segments (rare — only near a Pipe buffer boundary), in which
+        ///     case just that frame's bytes are copied into a small contiguous buffer.
         /// </summary>
-        /// <param name="stream">The input stream</param>
-        /// <returns>
-        ///     A <c>System.Threading.Task</c> that resolves when a complete <c>Frame</c> has been read
-        /// </returns>
-        internal static async Task<Frame> UnpackAsync(Stream stream)
+        /// <param name="buffer">
+        ///     The byte sequence to parse from (typically a <c>PipeReader</c>'s read buffer). On a
+        ///     successful parse this is advanced past the consumed frame; on failure it is left
+        ///     untouched so the caller can wait for more data and try again.
+        /// </param>
+        /// <param name="frame">The parsed frame</param>
+        /// <returns><c>true</c> if a complete frame was parsed</returns>
+        internal static bool TryParse(ref ReadOnlySequence<byte> buffer, out WebSocketFrame frame)
         {
-            var headers = await FrameHeaders.Unpack(stream);
+            frame = default;
+            var reader = new SequenceReader<byte>(buffer);
 
-            byte[] maskingKey = null;
-            byte[] data = null;
-
-            if (headers.ShouldMask)
+            if (!FrameHeaders.TryParse(ref reader, out var headers))
             {
-                maskingKey = await stream.ReadBytesAsync(4);
+                return false;
             }
 
+            var maskingKey = ReadOnlyMemory<byte>.Empty;
+            if (headers.ShouldMask && !TryReadContiguous(ref reader, 4, out maskingKey))
+            {
+                return false;
+            }
+
+            var data = ReadOnlyMemory<byte>.Empty;
             if (headers.PayloadLength > 0)
             {
-                data = headers.ShouldMask
-                    ? Xor(maskingKey, await stream.ReadBytesAsync(headers.PayloadLength))
-                    : await stream.ReadBytesAsync(headers.PayloadLength);
+                if (!TryReadContiguous(ref reader, headers.PayloadLength, out data))
+                {
+                    return false;
+                }
+
+                if (headers.ShouldMask)
+                {
+                    Mask(AsMutableSpan(data), maskingKey.Span);
+                }
             }
 
-            return new Frame(headers, maskingKey, data);
+            frame = new WebSocketFrame(headers, maskingKey, data);
+            buffer = buffer.Slice(reader.Position);
+            return true;
         }
 
         /// <summary>
-        ///     Decode a byte array to a <c>Frame</c>
+        ///     Encode this frame as bytes ready to be written to a socket
         /// </summary>
-        /// <param name="bytes">The byte array to decode</param>
-        /// <returns>A WebSocket message frame</returns>
-        internal static async Task<Frame> UnpackAsync(byte[] bytes)
+        /// <returns>The packed websocket frame bytes</returns>
+        internal byte[] Pack()
         {
-            using MemoryStream stream = new(bytes);
-            return await UnpackAsync(stream);
-        }
+            Span<byte> headerBuffer = stackalloc byte[FrameHeaders.MaxSize];
+            var headerLength = Headers.WriteTo(headerBuffer);
 
-        /// <summary>
-        ///     Encode this frame as a byte array
-        /// </summary>
-        /// <returns>A WebSocket message frame bytes</returns>
-        internal async Task<byte[]> PackAsync()
-        {
-            using var stream = new MemoryStream { Position = 0 };
-            await stream.WriteBytesAsync(await Headers.PackAsync());
+            var maskLength = Headers.ShouldMask ? MaskingKey.Length : 0;
+            var packed = new byte[headerLength + maskLength + Data.Length];
+
+            headerBuffer.Slice(0, headerLength).CopyTo(packed);
+
+            var payloadDestination = packed.AsSpan(headerLength + maskLength);
+            Data.Span.CopyTo(payloadDestination);
 
             if (Headers.ShouldMask)
             {
-                await stream.WriteBytesAsync(MaskingKey);
-                // Mask the payload data with a simple XOR using the masking key
-                await stream.WriteBytesAsync(Xor(MaskingKey, Data));
+                MaskingKey.Span.CopyTo(packed.AsSpan(headerLength, maskLength));
+                Mask(payloadDestination, MaskingKey.Span);
             }
-            else
+            else if (Headers.OpCode == OpCode.Close)
             {
-                // If this is a close frame status code, it needs to be BigEndian
-                if (Headers.OpCode == OpCode.Close)
-                {
-                    EnsureBigEndian(Data);
-                }
-                await stream.WriteBytesAsync(Data);
+                // Close status codes are BigEndian on the wire
+                EnsureBigEndian(payloadDestination);
             }
 
-            await stream.FlushAsync();
-
-            return stream.ToArray();
+            return packed;
         }
         #endregion
 
-        private static byte[] Xor(IReadOnlyList<byte> maskingKey, IReadOnlyList<byte> data)
+        /// <summary>
+        ///     Read exactly <paramref name="length"/> bytes off the reader as one contiguous
+        ///     <c>ReadOnlyMemory&lt;byte&gt;</c>. Zero-copy when those bytes already sit in a
+        ///     single segment of the underlying sequence; otherwise copies just that span into a
+        ///     freshly allocated buffer.
+        /// </summary>
+        private static bool TryReadContiguous(ref SequenceReader<byte> reader, int length, out ReadOnlyMemory<byte> memory)
         {
-            var output = new byte[data.Count];
-            for (var i = 0; i < data.Count; i++)
+            if (reader.Remaining < length)
             {
-                output[i] = (byte)(data[i] ^ maskingKey[i % 4]);
+                memory = default;
+                return false;
             }
 
-            return output;
+            var slice = reader.Sequence.Slice(reader.Position, length);
+            reader.Advance(length);
+
+            if (slice.IsSingleSegment)
+            {
+                memory = slice.First;
+                return true;
+            }
+
+            var copy = new byte[length];
+            slice.CopyTo(copy);
+            memory = copy;
+            return true;
+        }
+
+        /// <summary>
+        ///     Reclaim mutable access to memory that is known to actually be writable (a slice of
+        ///     a Pipe's internal buffer, or a buffer we just allocated ourselves) but is only
+        ///     exposed to us as a <c>ReadOnlyMemory&lt;byte&gt;</c>.
+        /// </summary>
+        private static Span<byte> AsMutableSpan(ReadOnlyMemory<byte> memory) => MemoryMarshal.AsMemory(memory).Span;
+
+        private static void Mask(Span<byte> data, ReadOnlySpan<byte> maskingKey)
+        {
+            for (var i = 0; i < data.Length; i++)
+            {
+                data[i] ^= maskingKey[i % 4];
+            }
         }
 
         private static byte[] CreateMaskingKey()
         {
-            Random random = new();
-            byte[] maskingKey = new byte[4];
-            Array.Fill(maskingKey,  (byte)random.Next(255));
+            var maskingKey = new byte[4];
+            new Random().NextBytes(maskingKey);
             return maskingKey;
         }
 
-        private static void EnsureBigEndian(byte[] bytes)
+        private static void EnsureBigEndian(Span<byte> bytes)
         {
             if (BitConverter.IsLittleEndian)
-                Array.Reverse(bytes);
+            {
+                bytes.Reverse();
+            }
         }
 
         /// <inheritdoc/>

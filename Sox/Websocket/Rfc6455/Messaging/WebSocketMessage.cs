@@ -101,7 +101,7 @@ namespace Sox.Websocket.Rfc6455.Messaging
 
         private int GetFrameAmount(int maxPayloadSizeBytes)
         {
-            return Data.Length / maxPayloadSizeBytes + (Data.Length % maxPayloadSizeBytes == 0 ? 0 : 1);
+            return (Data.Length / maxPayloadSizeBytes) + (Data.Length % maxPayloadSizeBytes == 0 ? 0 : 1);
         }
 
         private WebSocketFrame CreateFrame(int currentFrameIndex, int totalFrames, int frameMaxPayloadSizeBytes, bool shouldMask)

@@ -60,6 +60,14 @@ namespace Sox.Server.State
 
         private readonly Channel<byte[]> _channel;
 
+        // Guards DrainAsync so only one drain loop owns writing to the stream at a time - see
+        // EnqueueAsync/DrainAsync.
+        private int _draining;
+
+        // Guards Close() so it only ever runs its body once, even if called concurrently from
+        // multiple paths (e.g. a ping-timeout and an idle-timeout both deciding to close at once).
+        private int _closeInitiated;
+
         private bool _disposed;
 
         /// <summary>
@@ -101,6 +109,15 @@ namespace Sox.Server.State
         /// <returns>A task that resolves when the connection has been closed</returns>
         public async Task Close(CloseStatusCode reason)
         {
+            // Single-shot guard: State's check-then-set below isn't atomic on its own, and more
+            // than one path can decide to close a connection concurrently (today: a received
+            // Close frame vs. the server tearing every connection down on Stop(); future timeout
+            // paths add more). Only the first caller should ever run the body.
+            if (Interlocked.CompareExchange(ref _closeInitiated, 1, 0) != 0)
+            {
+                return;
+            }
+
             if (State == ConnectionState.Open || State == ConnectionState.Connecting)
             {
                 State = ConnectionState.Closing;
@@ -261,20 +278,40 @@ namespace Sox.Server.State
         private async Task EnqueueAsync(byte[] frame)
         {
             await _channel.Writer.WriteAsync(frame);
-            if (_channel.Reader.Count == 1)
+
+            // Try to become the drainer. If another EnqueueAsync call already owns the drain
+            // loop, trust it to pick up this frame - DrainAsync always rechecks the channel
+            // immediately after releasing the guard, before it actually stops, so a frame
+            // written in the handoff window is never stranded (see DrainAsync).
+            if (Interlocked.CompareExchange(ref _draining, 1, 0) == 0)
             {
-                await DequeueAsync();
+                await DrainAsync();
             }
         }
 
-        private async Task DequeueAsync()
+        // Writes every currently-queued frame to the stream, in order. Only one DrainAsync runs
+        // at a time.
+        //
+        // The previous version of this used "if (_channel.Reader.Count == 1) drain()" as its
+        // handoff signal, which raced under concurrent Send() calls: two writers could both
+        // observe a count > 1 right after each other's write and neither would start a drain,
+        // leaving frames queued indefinitely. This instead uses an atomic owner flag
+        // (_draining), and - critically - re-checks the channel after releasing that flag before
+        // exiting, so a frame written in the gap between "the drain loop found the channel empty"
+        // and "the flag was reset" still gets picked up, either by this loop continuing or by
+        // whichever writer wins the race to reclaim the flag.
+        private async Task DrainAsync()
         {
-            var frame = await _channel.Reader.ReadAsync();
-            await _stream.WriteAndFlushAsync(frame);
-            if (_channel.Reader.Count > 0)
+            do
             {
-                await DequeueAsync();
+                while (_channel.Reader.TryRead(out var frame))
+                {
+                    await _stream.WriteAndFlushAsync(frame);
+                }
+
+                Interlocked.Exchange(ref _draining, 0);
             }
+            while (_channel.Reader.Count > 0 && Interlocked.CompareExchange(ref _draining, 1, 0) == 0);
         }
     }
 }

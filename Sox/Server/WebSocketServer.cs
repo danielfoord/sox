@@ -7,7 +7,6 @@ using Sox.Websocket.Rfc6455.Framing;
 using Sox.Websocket.Rfc6455.Messaging;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -28,6 +27,12 @@ namespace Sox.Server
     public class WebSocketServer : IWebSocketServer, IDisposable
     {
         private const string WebsocketGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+
+        // SslProtocols.Tls13 isn't part of the netstandard2.1 reference assembly's SslProtocols
+        // enum (it was added to the runtime after netstandard2.1 was frozen) - this numeric value
+        // matches the real enum member and resolves correctly at runtime on any target that does
+        // support it.
+        private const SslProtocols Tls13 = (SslProtocols)12288;
 
         /// <summary>
         /// The IP Address that the server should bind to
@@ -88,21 +93,12 @@ namespace Sox.Server
         /// <summary>
         /// The amount of active connections
         /// </summary>
-        public long ConnectionCount
-        {
-            get
-            {
-                lock (_connectionLock)
-                {
-                    return _connections.Count;
-                }
-            }
-        }
+        public long ConnectionCount => _connections.Count;
 
         /// <summary>
         /// The server protocol
         /// </summary>
-        public Protocol Protocol;
+        public readonly Protocol Protocol;
 
         /// <summary>
         /// The period of time before a connection will timeout on read
@@ -115,7 +111,11 @@ namespace Sox.Server
 
         private readonly ConcurrentDictionary<string, Connection> _connections = new ConcurrentDictionary<string, Connection>();
 
-        private readonly object _connectionLock = new();
+        // Every task spawned per accepted client (HandleHttpUpgrade -> ProcessHandshake ->
+        // StartClientHandler is one awaited call chain, so tracking the outer task here covers
+        // all of it), so Stop() can wait for a full drain - including a client still mid-handshake
+        // that never made it into _connections.
+        private readonly ConcurrentDictionary<Task, byte> _clientTasks = new();
 
         private bool _disposed;
 
@@ -150,7 +150,7 @@ namespace Sox.Server
             Dispose(false);
         }
 
-        /// <inhertidoc/>
+        /// <inheritdoc/>
         public async Task Start()
         {
             _server = new TcpListener(IpAddress, Port);
@@ -163,61 +163,73 @@ namespace Sox.Server
                 try
                 {
                     client = await _server.AcceptTcpClientAsync();
-                    _ = Task.Run(() => HandleHttpUpgrade(client));
+                    TrackClientTask(Task.Run(() => HandleHttpUpgrade(client)));
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
                     client?.Close();
+                    if (!_cancellationTokenSource.IsCancellationRequested)
+                    {
+                        OnError?.Invoke(this, new OnErrorEventArgs(null, ex));
+                    }
                 }
             }
         }
 
-        /// <inhertidoc/>
+        /// <inheritdoc/>
         public async Task Stop()
         {
-            _cancellationTokenSource.Cancel();
-            List<string> connectionIds;
-            lock (_connectionLock)
+            // Capture, and guard against Stop() being called again after Dispose() already ran
+            // (e.g. a consumer wiring both Console.CancelKeyPress and
+            // AssemblyLoadContext.Unloading to the same shutdown routine - the latter also fires
+            // on ordinary process exit, after a first Stop()+Dispose() already completed).
+            var cancellationTokenSource = _cancellationTokenSource;
+            if (cancellationTokenSource == null)
             {
-                connectionIds = _connections.Keys.ToList();
-            }
-            foreach (var id in connectionIds)
-            {
-                Connection conn;
-                lock (_connectionLock)
-                {
-                    conn = _connections.GetValueOrDefault(id);
-                }
-                if (conn != null)
-                {
-                    await CloseConnection(conn, CloseStatusCode.GoingAway);
-                }
+                return;
             }
 
-            _server.Stop();
+            // Cancel and stop accepting before draining, so no new connection can land mid-shutdown
+            // - this also unblocks a pending AcceptTcpClientAsync() in the loop above.
+            cancellationTokenSource.Cancel();
+            _server?.Stop();
+
+            foreach (var connection in _connections.Values.ToArray())
+            {
+                await CloseConnection(connection, CloseStatusCode.GoingAway);
+            }
+
+            // Wait for every in-flight client task - including one still mid-handshake that never
+            // made it into _connections - so Stop() only returns once fully drained.
+            await Task.WhenAll(_clientTasks.Keys.ToArray());
+        }
+
+        private void TrackClientTask(Task task)
+        {
+            _clientTasks[task] = 0;
+            task.ContinueWith(t => _clientTasks.TryRemove(t, out _), TaskScheduler.Default);
         }
 
         private async Task HandleHttpUpgrade(TcpClient client)
         {
-            Stream stream;
-            if (X509Certificate != null)
-            {
-                stream = new SslStream(client.GetStream());
-                await ((SslStream)stream).AuthenticateAsServerAsync(X509Certificate,
-                    clientCertificateRequired: false,
-                    enabledSslProtocols: SslProtocols.Tls12,
-                    checkCertificateRevocation: true);
-            }
-            else
-            {
-                stream = client.GetStream();
-            }
-
-            stream.ReadTimeout = ConnectionReadTimeoutMs;
+            Stream stream = null;
 
             try
             {
+                stream = X509Certificate != null
+                    ? new SslStream(client.GetStream())
+                    : client.GetStream();
+
+                if (stream is SslStream sslStream)
+                {
+                    await sslStream.AuthenticateAsServerAsync(X509Certificate,
+                        clientCertificateRequired: false,
+                        enabledSslProtocols: SslProtocols.Tls12 | Tls13,
+                        checkCertificateRevocation: true);
+                }
+
+                stream.ReadTimeout = ConnectionReadTimeoutMs;
+
                 var httpRequest = await HttpRequest.ReadAsync(stream);
                 if (httpRequest != null)
                 {
@@ -233,9 +245,12 @@ namespace Sox.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Invalid Http Request: {ex}");
-                stream.Close();
-                await stream.DisposeAsync();
+                OnError?.Invoke(this, new OnErrorEventArgs(null, ex));
+                if (stream != null)
+                {
+                    stream.Close();
+                    await stream.DisposeAsync();
+                }
             }
         }
 
@@ -257,20 +272,18 @@ namespace Sox.Server
                     }
             };
 
-            // Retrieve the socket from the state object.  
+            // Retrieve the socket from the state object.
             var connection = new Connection(stream, MaxMessageBytes);
-            // Begin sending the data to the remote device.  
+            // Begin sending the data to the remote device.
             await connection.Send(response);
             connection.State = ConnectionState.Open;
-            lock (_connectionLock)
-            {
-                _connections[connection.Id] = connection;
-                OnConnection?.Invoke(this, new OnConnectionEventArgs(connection));
-            }
+
+            _connections[connection.Id] = connection;
+            OnConnection?.Invoke(this, new OnConnectionEventArgs(connection));
+
             await StartClientHandler(connection);
         }
 
-        // The body of this task should live in the connection.
         private async Task StartClientHandler(Connection connection)
         {
             // Should be Task.Run, Task.Factory.StartNew doesn't handle async properly
@@ -300,7 +313,6 @@ namespace Sox.Server
             }, cancellationToken: _cancellationTokenSource.Token);
         }
 
-        // I would move this to the connection class
         private async Task HandleFrame(Connection connection, WebSocketFrame frame)
         {
             // Close connection if not masked 
@@ -331,7 +343,6 @@ namespace Sox.Server
             }
         }
 
-        // I would move this to the connection class
         private async Task HandleDataFrame(WebSocketFrame frame, Connection connection)
         {
             using var message = await connection.TryCompleteMessage(frame);
@@ -377,11 +388,8 @@ namespace Sox.Server
         private async Task CloseConnection(Connection connection, CloseStatusCode reason)
         {
             await connection.Close(reason);
-            lock (_connectionLock)
-            {
-                RemoveConnection(connection.Id);
-                OnDisconnection?.Invoke(this, new OnDisconnectionEventArgs(connection));
-            }
+            RemoveConnection(connection.Id);
+            OnDisconnection?.Invoke(this, new OnDisconnectionEventArgs(connection));
         }
 
         private void RemoveConnection(string id)
@@ -408,6 +416,8 @@ namespace Sox.Server
             {
                 _cancellationTokenSource?.Dispose();
                 _cancellationTokenSource = null;
+                _server?.Stop();
+                X509Certificate?.Dispose();
             }
 
             _disposed = true;

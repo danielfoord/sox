@@ -143,7 +143,7 @@ namespace Sox.Tests.Websocket.Rfc6455.Framing
         public void Pack_Sets_Correct_Bits_For_OpCode_Binary()
         {
             // Arrange
-            var frame = WebSocketFrame.CreateBinary(new byte[0]);
+            var frame = WebSocketFrame.CreateBinary(Array.Empty<byte>());
 
             // Act
             var packed = frame.Pack();
@@ -193,7 +193,7 @@ namespace Sox.Tests.Websocket.Rfc6455.Framing
         public void Pack_Sets_Correct_Bits_For_OpCode_Continuation()
         {
             // Arrange
-            var frame = WebSocketFrame.CreateContinuation(new byte[0]);
+            var frame = WebSocketFrame.CreateContinuation(Array.Empty<byte>());
 
             // Act
             var packed = frame.Pack();
@@ -422,7 +422,7 @@ namespace Sox.Tests.Websocket.Rfc6455.Framing
         public void Unpack_Reads_Correct_Bits_For_OpCode_Binary()
         {
             // Arrange
-            var frame = WebSocketFrame.CreateBinary(new byte[0]);
+            var frame = WebSocketFrame.CreateBinary(Array.Empty<byte>());
 
             // Act
             var unpacked = Unpack(frame.Pack());
@@ -471,7 +471,7 @@ namespace Sox.Tests.Websocket.Rfc6455.Framing
         public void Unpack_Reads_Correct_Bits_For_OpCode_Continuation()
         {
             // Arrange
-            var frame = WebSocketFrame.CreateContinuation(new byte[0]);
+            var frame = WebSocketFrame.CreateContinuation(Array.Empty<byte>());
 
             // Act
             var unpacked = Unpack(frame.Pack());
